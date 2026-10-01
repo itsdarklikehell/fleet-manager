@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# scripts/issue-close-auto.sh - Issue close automation
+source /home/hans/.hermes/.env 2>/dev/null || true
+source "$(dirname "$0")/../lib/config.sh"
+source "$(dirname "$0")/../lib/telegram.sh"
+
+log "=== Issue Close Auto ==="
+closed=0
+for repo_dir in "$REPOS_DIR"/*/; do
+  [ -d "$repo_dir/.git" ] || continue
+  repo=$(basename "$repo_dir")
+  org=$(get_repo_org "$repo_dir"); set_repo_token "$org"
+  issues=$(gh issue list --repo "${org}/${repo}" --state open --json number,title,updatedAt --jq '.[] | select(.updatedAt < "'"$(date -d '30 days ago' +%Y-%m-%d)"'") | "\(.number)|\(.title)"' 2>/dev/null || true)
+  if [ -n "$issues" ]; then
+    while IFS='|' read -r num title; do
+      [ -z "$num" ] && continue
+      log "  Issue #$num: $title → sluiten..."
+      gh issue close "${org}/${repo}#$num" --comment "Automatically closed due to inactivity (>30 days)." 2>/dev/null && ((closed++)) || true
+    done <<< "$issues"
+  fi
+done
+log "=== Issue Close Auto complete: $closed issues gesloten ==="
+send_telegram_message "🔒 *Issue Close Auto*\n\n*Gesloten:* $closed issues\n\n📋 Volledig log: $LOG_FILE" || true
