@@ -1,0 +1,7 @@
+--- fleet-manager ---
+/home/hans/.openclaw/workspace/projects/fleet-manager/scripts/status.sh: regel 18: local: kan alleen worden gebruikt binnen een functie
+/home/hans/.openclaw/workspace/projects/fleet-manager/scripts/status.sh: regel 20: local: kan alleen worden gebruikt binnen een functie
+PRS: fleet-manager has 0 open PRs
+/home/hans/.openclaw/workspace/projects/fleet-manager/scripts/status.sh: regel 23: local: kan alleen worden gebruikt binnen een functie
+ISS-COUNT: 0
+DONE: fleet-manager
