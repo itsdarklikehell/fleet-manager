@@ -19,4 +19,4 @@ for repo_dir in "$REPOS_DIR"/*/; do
   fi
 done
 log "=== Actions Cleanup complete: $cleaned oude runs verwijderd ==="
-send_telegram_message "🧹 *Actions Cleanup*\n\n*Verwijderd:* $cleane oude runs\n\n📋 Volledig log: $LOG_FILE" || true
+send_telegram_message "🧹 *Actions Cleanup*\n\n*Verwijderd:* $cleaned oude runs\n\n📋 Volledig log: $LOG_FILE" || true
