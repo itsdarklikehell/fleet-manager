@@ -1,5 +1,13 @@
 # GitHub Fleet Manager
 
+
+## Development Visualization
+
+<video src="https://raw.githubusercontent.com/itsdarklikehell/fleet-manager/main/gource.mp4" controls width="100%"></video>
+
+*Gource visualization showing the repository's commit history. See the [Gource workflow](.github/workflows/gource.yml) for details.*
+
+
 Automatische GitHub fleet management met cron jobs, monitoring, en rapportage.
 
 ## Functies
