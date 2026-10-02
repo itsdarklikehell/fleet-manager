@@ -12,13 +12,13 @@ log "Fase 1: Notificaties ophalen..."
 
 # itsdarklikehell notificaties
 log "  itsdarklikehell notificaties..."
-itsdarklikehell_notifs=$(gh api notifications --paginate --jq '.[] | {id, reason, subject: .subject.title, repo: .repository.full_name, type: .subject.type, url}' 2>/dev/null || echo "")
+itsdarklikehell_notifs=$(gh api notifications --paginate --jq '.[] | {id: .id, reason: .reason, subject: .subject.title, repo: .repository.full_name, type: .subject.type, url: .subject.url}' 2>/dev/null || echo "")
 
 # hmol33 notificaties (als token beschikbaar)
 hmol33_notifs=""
 if [ -n "$HMOL33_TOKEN" ]; then
   log "  hmol33 notificaties..."
-  hmol33_notifs=$(GITHUB_TOKEN="$HMOL33_TOKEN" gh api notifications --paginate --jq '.[] | {id, reason, subject: .subject.title, repo: .repository.full_name, type: .subject.type, url}' 2>/dev/null || echo "")
+  hmol33_notifs=$(GITHUB_TOKEN="$HMOL33_TOKEN" gh api notifications --paginate --jq '.[] | {id: .id, reason: .reason, subject: .subject.title, repo: .repository.full_name, type: .subject.type, url: .subject.url}' 2>/dev/null || echo "")
 fi
 
 # Fase 2: Notificaties classificeren
