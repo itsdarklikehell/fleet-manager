@@ -12,6 +12,9 @@ Automatische GitHub fleet management met cron jobs, monitoring, en rapportage.
 - **Telegram Rapportage**: Berichten naar meerdere chats
 - **Self-Management**: Self-update, self-monitor, self-backup
 - **R&D Team Coordinatie**: Automatische repo verdeling over teams
+- **Inbox Management**: Notificaties lezen, classificeren, antwoorden
+- **Auto-Responder**: Automatisch antwoorden op issues en PRs
+- **Notification Digest**: Dagelijkse samenvatting van activiteit
 
 ## Installatie
 
@@ -77,6 +80,23 @@ export REPOS_DIR="$HOME/.openclaw/workspace/projects"
 
 # R&D Team Coordinator
 ./scripts/rd-team-coordinator.sh
+
+# Inbox management
+./scripts/inbox-manager.sh
+
+# Auto-responder
+./scripts/auto-responder.sh
+./scripts/auto-label.sh
+./scripts/auto-assign.sh
+./scripts/auto-close.sh
+./scripts/auto-merge.sh
+
+# Notification digest
+./scripts/notification-digest.sh
+./scripts/activity-report.sh
+./scripts/mention-report.sh
+./scripts/review-request-report.sh
+./scripts/ci-failure-report.sh
 ```
 
 ## Cron jobs
@@ -99,6 +119,23 @@ export REPOS_DIR="$HOME/.openclaw/workspace/projects"
 
 # R&D Team Coordinator (wekelijks)
 0 20 * * 0 ./scripts/rd-team-coordinator.sh
+
+# Inbox manager (elke 2 uur)
+30 */2 * * * ./scripts/inbox-manager.sh
+
+# Auto-responder (dagelijkse)
+0 21 * * * ./scripts/auto-responder.sh
+15 21 * * * ./scripts/auto-label.sh
+30 21 * * * ./scripts/auto-assign.sh
+45 21 * * * ./scripts/auto-close.sh
+0 22 * * * ./scripts/auto-merge.sh
+
+# Notification digest (dagelijkse)
+0 23 * * * ./scripts/notification-digest.sh
+15 23 * * * ./scripts/activity-report.sh
+30 23 * * * ./scripts/mention-report.sh
+45 23 * * * ./scripts/review-request-report.sh
+0 0 * * * ./scripts/ci-failure-report.sh
 ```
 
 ## Licentie
