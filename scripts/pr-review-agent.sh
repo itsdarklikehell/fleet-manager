@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # scripts/pr-review-agent.sh - Automatisch PRs reviewen met AGENTS.md conventies
 # Leest AGENTS.md uit de repo, reviewt open PRs tegen die regels, en post commentaar
+set -euo pipefail
+
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

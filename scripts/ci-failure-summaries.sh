@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # scripts/ci-failure-summaries.sh - Samenvattingen van CI failures
 # Haal CI failures op en genereer leesbare samenvattingen
+set -euo pipefail
+
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 
