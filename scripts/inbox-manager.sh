@@ -35,15 +35,15 @@ classify_item() {
     echo "question"
   elif echo "$combined" | grep -qiE "doc|readme|typo|documentation"; then
     echo "documentation"
-  elif echo "$combined" | grep -ciE "security|vuln|cve|exploit|injection"; then
+  elif echo "$combined" | grep -qiE "security|vuln|cve|exploit|injection"; then
     echo "security"
-  elif echo "$combined" | grep -ciE "performance|slow|optimi|speed|memory"; then
+  elif echo "$combined" | grep -qiE "performance|slow|optimi|speed|memory"; then
     echo "performance"
-  elif echo "$combined" | grep -ciE "test|spec|coverage"; then
+  elif echo "$combined" | grep -qiE "test|spec|coverage"; then
     echo "testing"
-  elif echo "$combined" | grep -ciE "refactor|cleanup|simplify"; then
+  elif echo "$combined" | grep -qiE "refactor|cleanup|simplify"; then
     echo "refactor"
-  elif echo "$combined" | grep -ciE "dependenc|upgrade|update|bump"; then
+  elif echo "$combined" | grep -qiE "dependenc|upgrade|update|bump"; then
     echo "dependencies"
   else
     echo "other"
