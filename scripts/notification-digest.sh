@@ -8,7 +8,8 @@ log "=== Notification Digest ==="
 
 # Configuratie
 DIGEST_DAYS="${DIGEST_DAYS:-1}"
-DIGEST_REPOS=(${DIGEST_REPOS:-"${KEY_REPOS[@]}"})
+# shellcheck disable=SC2206
+DIGEST_REPOS=( ${DIGEST_REPOS:-${KEY_REPOS[@]}} )
 
 # Tellers
 total_issues=0

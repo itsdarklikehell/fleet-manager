@@ -6,7 +6,8 @@ source "$(dirname "$0")/../lib/telegram.sh"
 
 log "=== CI Failure Report ==="
 
-CI_REPOS=(${CI_REPOS:-"${KEY_REPOS[@]}"})
+# shellcheck disable=SC2206
+CI_REPOS=( ${CI_REPOS:-${KEY_REPOS[@]}} )
 CI_LIMIT="${CI_LIMIT:-10}"
 
 # Teller

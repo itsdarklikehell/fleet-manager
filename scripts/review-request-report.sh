@@ -7,7 +7,8 @@ source "$(dirname "$0")/../lib/telegram.sh"
 log "=== Review Request Report ==="
 
 REVIEW_DAYS="${REVIEW_DAYS:-7}"
-REVIEW_REPOS=(${REVIEW_REPOS:-"${KEY_REPOS[@]}"})
+# shellcheck disable=SC2206
+REVIEW_REPOS=( ${REVIEW_REPOS:-${KEY_REPOS[@]}} )
 
 # Teller
 total_review_requests=0

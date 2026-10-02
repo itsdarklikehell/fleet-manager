@@ -7,8 +7,8 @@ source "$(dirname "$0")/../lib/telegram.sh"
 log "=== Mention Report ==="
 
 MENTION_DAYS="${MENTION_DAYS:-7}"
-MENTION_REPOS=(${MENTION_REPOS:-"${KEY_REPOS[@]}"})
-SINCE_DATE=$(date -d "$MENTION_DAYS days ago" '+%Y-%m-%d' 2>/dev/null || date -v-${MENTION_DAYS}d '+%Y-%m-%d' 2>/dev/null || echo "")
+# shellcheck disable=SC2206
+MENTION_REPOS=( ${MENTION_REPOS:-${KEY_REPOS[@]}} )
 
 # Teller
 total_mentions=0

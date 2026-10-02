@@ -7,7 +7,8 @@ source "$(dirname "$0")/../lib/telegram.sh"
 log "=== Activity Report ==="
 
 REPORT_DAYS="${REPORT_DAYS:-1}"
-REPORT_REPOS=(${REPORT_REPOS:-"${KEY_REPOS[@]}"})
+# shellcheck disable=SC2206
+REPORT_REPOS=( ${REPORT_REPOS:-${KEY_REPOS[@]}} )
 TODAY=$(date '+%Y-%m-%d')
 
 # Tellers
