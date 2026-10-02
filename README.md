@@ -11,6 +11,7 @@ Automatische GitHub fleet management met cron jobs, monitoring, en rapportage.
 - **Backup Verificatie**: Config backups, Docker volumes
 - **Telegram Rapportage**: Berichten naar meerdere chats
 - **Self-Management**: Self-update, self-monitor, self-backup
+- **R&D Team Coordinatie**: Automatische repo verdeling over teams
 
 ## Installatie
 
@@ -73,6 +74,9 @@ export REPOS_DIR="$HOME/.openclaw/workspace/projects"
 ./scripts/self-update.sh
 ./scripts/self-monitor.sh
 ./scripts/self-backup.sh
+
+# R&D Team Coordinator
+./scripts/rd-team-coordinator.sh
 ```
 
 ## Cron jobs
@@ -92,6 +96,9 @@ export REPOS_DIR="$HOME/.openclaw/workspace/projects"
 0 6 * * * ./scripts/self-update.sh
 15 6 * * * ./scripts/self-monitor.sh
 0 5 1 * * ./scripts/self-backup.sh
+
+# R&D Team Coordinator (wekelijks)
+0 20 * * 0 ./scripts/rd-team-coordinator.sh
 ```
 
 ## Licentie
