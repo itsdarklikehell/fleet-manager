@@ -65,6 +65,7 @@ Automatische GitHub fleet management met cron jobs, monitoring, en rapportage.
 | `automated-dependency-updates.sh` | Auto dependency update PRs | Dagelijks |
 | `branch-protection-enforcement.sh` | Branch protection enforcement | Wekelijks |
 | `repo-archiving-suggestions.sh` | Repo archiving suggesties | Wekelijks |
+| `run-all-dry-runs.sh` | Batch test alle scripts in dry-run mode | On-demand |
 | `health-check.sh` | Health check voor alle scripts | On-demand |
 
 ## 🚀 Installatie
