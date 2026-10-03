@@ -34,3 +34,13 @@ test-report.txt
 
 # Logs
 *.log
+
+# Environment files
+.env
+
+# CI
+.github/workflows/gource.yml.cache
+
+# Coverage
+.coverage
+htmlcov/
