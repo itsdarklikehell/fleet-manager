@@ -100,11 +100,13 @@ try:
     lang_counts = {}
     for repo in repos:
         lang = repo.get('language', 'Unknown')
+        if lang in ('Unknown', '', None):
+            continue
         lang_counts[lang] = lang_counts.get(lang, 0) + 1
     
     total = sum(lang_counts.values())
     skills = {}
-    for lang, count in lang_counts.items():
+    for lang, count in sorted(lang_counts.items(), key=lambda kv: -kv[1]):
         pct = round((count / total) * 100) if total > 0 else 0
         skills[lang] = {'repos': count, 'percentage': pct}
     
@@ -116,8 +118,21 @@ except Exception as e:
   # Get stats
   local total_repos total_stars languages
   total_repos=$(echo "$repos" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
-  total_stars=$(echo "$repos" | python3 -c "import sys,json; print(sum(r.get('stargazers_count',0) for r in json.load(sys.stdin)))" 2>/dev/null || echo "0")
-  languages=$(echo "$repos" | python3 -c "import sys,json; print(len(set(r.get('language','Unknown') for r in json.load(sys.stdin))))" 2>/dev/null || echo "0")
+  total_stars=$(echo "$repos" | python3 -c "import sys,json; print(sum(r.get('stars',0) for r in json.load(sys.stdin)))" 2>/dev/null || echo "0")
+  languages=$(echo "$repos" | python3 -c "import sys,json; print(len(set(r.get('language') for r in json.load(sys.stdin) if r.get('language') not in ('Unknown','',None))))" 2>/dev/null || echo "0")
+
+  # Sanity-guard: total_stars moet de som van de repo-sterren zijn.
+  # Een 0 hier (terwijl repos sterren hebben) betekent een kapotte pijplijn.
+  local expected_stars
+  expected_stars=$(echo "$repos" | python3 -c "import sys,json; print(sum(r.get('stars',0) for r in json.load(sys.stdin)))" 2>/dev/null || echo "0")
+  if [ "$total_stars" != "$expected_stars" ]; then
+    log "    ⚠️ total_stars mismatch ($total_stars != $expected_stars) — herberekenen"
+    total_stars="$expected_stars"
+  fi
+  if [ "$total_repos" -gt 0 ] && [ "$total_stars" = "0" ] && [ "$expected_stars" != "0" ]; then
+    log "    ❌ total_stars onverwacht 0 bij $total_repos repos — data geweigerd"
+    return 1
+  fi
   
   # Get recent contributions
   local contributions
@@ -314,10 +329,32 @@ if [ "$PDG_DRY_RUN" = "yes" ]; then
   log "  github-data.json content:"
   echo "$github_json" | sed 's/^/    /'
 else
+  # Valideer vóór het overschrijven: een kapotte run mag een goede file niet wissen
+  if [ -z "$github_json" ]; then
+    log "  ❌ github-data.json is leeg — bestaande file blijft behouden"
+    exit 1
+  fi
+  if ! echo "$github_json" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+s = d.get('stats', {})
+inner = s.get('stats', {})
+repos = s.get('repos', [])
+assert isinstance(repos, list), 'repos is geen lijst'
+assert len(repos) > 0, 'geen repos'
+expected = sum(r.get('stars', 0) for r in repos)
+got = inner.get('total_stars', 0)
+assert got == expected, f'total_stars {got} != som {expected}'
+assert inner.get('total_repos', 0) == len(repos), 'total_repos klopt niet'
+" 2>/dev/null; then
+    log "  ❌ Validatie mislukt — bestaande github-data.json blijft behouden"
+    exit 1
+  fi
+
   echo "$profile_json" > "$output_dir/profile-data.json"
   echo "$github_json" > "$output_dir/github-data.json"
   log "  ✅ profile-data.json geschreven naar $output_dir"
-  log "  ✅ github-data.json bijgewerkt"
+  log "  ✅ github-data.json bijgewerkt (gevalideerd)"
 fi
 
 log "=== Profile Data Generator klaar ==="
