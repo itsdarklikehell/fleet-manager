@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # resume-pdf-generate.sh - Bouw een eigen PDF van de CV-pagina
 #
-# Waarom: de "Download PDF"-knop wees naar een externe canva.link die kan
-# verlopen. Deze stap genereert de PDF uit de eigen pagina (de print-stylesheet
-# in index.html is daar al op ingericht) en zet hem in de repo.
+# Waarom: de eigen PDF i.p.v. een externe link die kan verlopen. Rendert uit
+# index.html (de print-stylesheet daar bepaalt wat erin komt), in beide talen.
 #
 # Gebruik:
 #   bash scripts/resume-pdf-generate.sh [--dry-run]
@@ -116,10 +115,7 @@ rc=0
 render_lang nl "$OUT_PDF"    "NL" || rc=1
 render_lang en "$OUT_PDF_EN" "EN" || rc=1
 
-if command -v pdftotext >/dev/null 2>&1 && [ -s "$OUT_PDF" ] && [ -s "$OUT_PDF_EN" ]; then
-  log "  ✅ beide versies bevatten de live data"
-fi
-
 [ "$rc" -eq 0 ] || exit 1
+log "  ✅ beide versies gegenereerd en op de data-fout gecontroleerd"
 
 log "=== Resume PDF Generate klaar ==="
