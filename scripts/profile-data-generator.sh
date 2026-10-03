@@ -49,19 +49,47 @@ get_github_repo_stats() {
     return
   fi
   
-  # Get repos
-  local repos
-  repos=$(gh api "users/$username/repos?per_page=100" --jq '[.[] | {
-    name: .name,
-    url: .html_url,
-    description: (.description // "No description"),
-    stars: .stargazers_count,
-    forks: .forks_count,
-    language: (.language // "Unknown"),
-    created: .created_at,
-    updated: .updated_at,
-    topics: (.topics // [])
-  }]' 2>/dev/null || echo "[]")
+  # Get ALL repos with pagination (up to 1000)
+  local repos="[]"
+  local page=1
+  while [ $page -le 10 ]; do
+    local page_repos
+    page_repos=$(gh api "users/$username/repos?per_page=100&page=$page&sort=updated&direction=desc" --jq '[.[] | {
+      name: .name,
+      url: .html_url,
+      description: (.description // "No description"),
+      stars: .stargazers_count,
+      forks: .forks_count,
+      language: (.language // "Unknown"),
+      created: .created_at,
+      updated: .updated_at,
+      topics: (.topics // [])
+    }]' 2>/dev/null || echo "[]")
+    
+    local count
+    count=$(echo "$page_repos" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
+    
+    if [ "$count" -eq 0 ]; then
+      break
+    fi
+    
+    repos=$(echo "$repos" "$page_repos" | python3 -c "
+import sys, json
+parts = sys.stdin.read().split('] [', 1)
+if len(parts) == 2:
+    a = json.loads(parts[0] + ']')
+    b = json.loads('[' + parts[1])
+    print(json.dumps(a + b))
+else:
+    print(parts[0])
+" 2>/dev/null || echo "$repos")
+    
+    if [ "$count" -lt 100 ]; then
+      break
+    fi
+    
+    page=$((page + 1))
+  done
   
   # Calculate skills based on languages
   local skills
@@ -231,14 +259,25 @@ cylab_stats=$(get_cylab_stats "$PDG_USERNAME_CYLAB")
 # Genereer profile-data.json
 generated_at=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
+# Write temp files for Python to read (avoids shell escaping issues)
+echo "$thm_stats" > /tmp/pdg_thm.json
+echo "$htb_stats" > /tmp/pdg_htb.json
+echo "$cylab_stats" > /tmp/pdg_cylab.json
+echo "$github_repo_data" > /tmp/pdg_github.json
+echo "$github_user_stats" > /tmp/pdg_github_user.json
+
 # Build JSON with Python for proper formatting
 profile_json=$(python3 -c "
-import json, sys
+import json
+
+with open('/tmp/pdg_thm.json') as f: thm = json.load(f)
+with open('/tmp/pdg_htb.json') as f: htb = json.load(f)
+with open('/tmp/pdg_cylab.json') as f: cylab = json.load(f)
 
 data = {
-    'tryhackme': $thm_stats,
-    'hackthebox': $htb_stats,
-    'cylab': $cylab_stats,
+    'tryhackme': thm,
+    'hackthebox': htb,
+    'cylab': cylab,
     'generated_at': '$generated_at'
 }
 print(json.dumps(data, indent=2, ensure_ascii=False))
@@ -246,15 +285,21 @@ print(json.dumps(data, indent=2, ensure_ascii=False))
 
 # Update github-data.json with stats
 github_json=$(python3 -c "
-import json, sys
+import json
+
+with open('/tmp/pdg_github.json') as f: github_data = json.load(f)
+with open('/tmp/pdg_github_user.json') as f: github_user = json.load(f)
 
 data = {
-    'stats': $github_repo_data,
+    'stats': github_data,
     'generated_at': '$generated_at',
-    'github_user': $github_user_stats
+    'github_user': github_user
 }
 print(json.dumps(data, indent=2, ensure_ascii=False))
 " 2>/dev/null)
+
+# Cleanup temp files
+rm -f /tmp/pdg_thm.json /tmp/pdg_htb.json /tmp/pdg_cylab.json /tmp/pdg_github.json /tmp/pdg_github_user.json
 
 # Output
 output_dir="${PDG_OUTPUT_DIR:-$REPOS_DIR/itsdarklikehell-my-resume}"
