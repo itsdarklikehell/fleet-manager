@@ -3,6 +3,8 @@
 # Verifieert dat alle scripts correct zijn geïnstalleerd en werken
 set -euo pipefail
 
+# Laad environment
+source ~/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 
@@ -114,7 +116,13 @@ check_dependency "git" "Git"
 
 log ""
 log "Checking environment variables..."
-check_env_var "GITHUB_TOKEN" "yes"
+# Accepteer zowel GITHUB_TOKEN als GH_TOKEN (wordt gezet door .env)
+if [ -n "${GITHUB_TOKEN:-}" ] || [ -n "${GH_TOKEN:-}" ]; then
+  log "  ✅ GITHUB_TOKEN/GH_TOKEN: gezet"
+else
+  log "  ❌ GITHUB_TOKEN/GH_TOKEN: vereist maar niet gezet"
+  return 1
+fi
 check_env_var "TELEGRAM_TOKEN" "no"
 check_env_var "TELEGRAM_CHAT_ID" "no"
 
