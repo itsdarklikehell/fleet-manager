@@ -104,6 +104,7 @@ scripts=(
   "automated-dependency-updates.sh"
   "branch-protection-enforcement.sh"
   "repo-archiving-suggestions.sh"
+  "run-all-dry-runs.sh"
 )
 
 script_ok=0

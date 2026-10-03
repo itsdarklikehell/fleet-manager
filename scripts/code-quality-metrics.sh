@@ -34,21 +34,26 @@ calculate_metrics() {
   
   # 1. Lines of Code
   local loc
-  loc=$(find . -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.sh" -o -name "*.go" -o -name "*.rs" 2>/dev/null | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}' || echo "0")
+  loc=$(find . \( -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.sh" -o -name "*.go" -o -name "*.rs" \) 2>/dev/null | xargs wc -l 2>/dev/null | tail -1 | awk '{print $1}')
+  loc=${loc:-0}
   
   # 2. Cyclomatic complexity (geschat)
   local complexity
-  complexity=$(find . -name "*.py" -o -name "*.js" -o -name "*.ts" 2>/dev/null | xargs grep -c "if\|for\|while\|case\|catch" 2>/dev/null | awk -F: '{sum+=$2} END {print sum+0}' || echo "0")
+  complexity=$(find . \( -name "*.py" -o -name "*.js" -o -name "*.ts" \) 2>/dev/null | xargs grep -c "if\|for\|while\|case\|catch" 2>/dev/null | awk -F: '{sum+=$2} END {print sum+0}')
+  complexity=${complexity:-0}
   
   # 3. Code duplication (geschat)
   local duplication
-  duplication=$(find . -name "*.py" -o -name "*.js" -o -name "*.ts" 2>/dev/null | xargs md5sum 2>/dev/null | awk '{print $1}' | sort | uniq -d | wc -l || echo "0")
+  duplication=$(find . \( -name "*.py" -o -name "*.js" -o -name "*.ts" \) 2>/dev/null | xargs md5sum 2>/dev/null | awk '{print $1}' | sort | uniq -d | wc -l)
+  duplication=${duplication:-0}
   
   # 4. Test coverage (geschat)
   local test_files
-  test_files=$(find . -name "test_*.py" -o -name "*_test.py" -o -name "*.test.js" -o -name "*.spec.ts" 2>/dev/null | wc -l || echo "0")
+  test_files=$(find . \( -name "test_*.py" -o -name "*_test.py" -o -name "*.test.js" -o -name "*.spec.ts" \) 2>/dev/null | wc -l)
+  test_files=${test_files:-0}
   local source_files
-  source_files=$(find . -name "*.py" -o -name "*.js" -o -name "*.ts" 2>/dev/null | grep -v test | wc -l || echo "0")
+  source_files=$(find . \( -name "*.py" -o -name "*.js" -o -name "*.ts" \) 2>/dev/null | grep -v test | wc -l)
+  source_files=${source_files:-0}
   local coverage=0
   if [ "$source_files" -gt 0 ]; then
     coverage=$((test_files * 100 / source_files))

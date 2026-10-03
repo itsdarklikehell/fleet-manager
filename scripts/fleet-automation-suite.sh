@@ -101,4 +101,7 @@ run_script "branch-protection-enforcement.sh" "Branch Protection Enforcement"
 # Fase 18: Repo Archiving Suggestions
 run_script "repo-archiving-suggestions.sh" "Repo Archiving Suggestions"
 
+# Fase 19: Batch Dry-Run Test
+run_script "run-all-dry-runs.sh" "Batch Dry-Run Test"
+
 log "=== Fleet Automation Suite klaar ==="

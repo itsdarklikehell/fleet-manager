@@ -23,12 +23,22 @@ scan_for_secrets() {
   
   local findings=""
   
-  # Clone repo tijdelijk
+  # Clone repo tijdelijk met retry
   local tmpdir
   tmpdir=$(mktemp -d)
   
-  if ! git clone --depth 1 "https://github.com/$repo.git" "$tmpdir/repo" 2>/dev/null; then
-    log "  ❌ Kon repo niet clonen"
+  local clone_ok=false
+  for attempt in 1 2 3; do
+    if git clone --depth 1 "https://github.com/$repo.git" "$tmpdir/repo" 2>/dev/null; then
+      clone_ok=true
+      break
+    fi
+    log "  ⚠️ Clone poging $attempt gefaald, opnieuw proberen..."
+    sleep 2
+  done
+  
+  if [ "$clone_ok" != true ]; then
+    log "  ❌ Kon repo niet clonen na 3 pogingen"
     rm -rf "$tmpdir"
     return 1
   fi
