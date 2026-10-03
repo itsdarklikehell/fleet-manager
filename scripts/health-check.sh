@@ -104,6 +104,7 @@ scripts=(
   "automated-dependency-updates.sh"
   "branch-protection-enforcement.sh"
   "repo-archiving-suggestions.sh"
+  "mcp-inbox-reader.sh"
   "run-all-dry-runs.sh"
 )
 

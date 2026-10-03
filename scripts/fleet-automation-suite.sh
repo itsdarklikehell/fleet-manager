@@ -39,6 +39,7 @@ run_script() {
 # Fase 1: Inbox & Triage
 if [ "$SUITE_SKIP_TRIAGE" != "yes" ]; then
   run_script "inbox-reader.sh" "Inbox Reader"
+  run_script "mcp-inbox-reader.sh" "MCP Inbox Reader"
   run_script "nightly-backlog-triage.sh" "Nightly Backlog Triage"
 fi
 
