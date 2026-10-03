@@ -129,7 +129,10 @@ run_script "test-execution-reporting.sh" "Test Execution Reporting"
 # Fase 28: Multi-Repo Coordination
 run_script "multi-repo-coordination.sh" "Multi-Repo Coordination"
 
-# Fase 29: Batch Dry-Run Test
+# Fase 29: Profile Data Generator
+run_script "profile-data-generator.sh" "Profile Data Generator"
+
+# Fase 30: Batch Dry-Run Test
 run_script "run-all-dry-runs.sh" "Batch Dry-Run Test"
 
 log "=== Fleet Automation Suite klaar ==="

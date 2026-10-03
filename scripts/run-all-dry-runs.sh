@@ -43,6 +43,7 @@ scripts=(
   "dependency-security-fixes.sh"
   "test-execution-reporting.sh"
   "multi-repo-coordination.sh"
+  "profile-data-generator.sh"
 )
 
 passed=0
