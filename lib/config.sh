@@ -118,6 +118,67 @@ log() {
   rm -f "$lockfile" 2>/dev/null || true
 }
 
+# Structured logging (JSON) voor betere parsing
+log_json() {
+  local level="$1"; shift
+  local script="${BASH_SOURCE[1]:-unknown}"
+  local msg="$*"
+  local ts
+  ts=$(date -Iseconds)
+  local lockfile="$LOG_FILE.lock"
+  local waited=0
+  while [ -f "$lockfile" ] && [ $waited -lt 50 ]; do
+    sleep 0.1; ((waited++)) || true
+  done
+  printf '{"timestamp":"%s","level":"%s","script":"%s","message":"%s"}\n' \
+    "$ts" "$level" "$(basename "$script")" "$msg" >> "$LOG_FILE.json" 2>/dev/null || true
+  rm -f "$lockfile" 2>/dev/null || true
+}
+
+# Rate limiter: houd bij hoeveel API requests er zijn gemaakt
+RATE_LIMIT_FILE="${RATE_LIMIT_FILE:-$HOME/.github_fleet_rate_limit}"
+RATE_LIMIT_MAX="${RATE_LIMIT_MAX:-4500}"  # 5000 is de limiet, houd marge
+RATE_LIMIT_WINDOW="${RATE_LIMIT_WINDOW:-3600}"  # 1 uur in seconden
+
+rate_limit_check() {
+  local now
+  now=$(date +%s)
+  local window_start=$((now - RATE_LIMIT_WINDOW))
+  
+  # Lees bestaande count en timestamp
+  local count=0
+  local file_time=0
+  if [ -f "$RATE_LIMIT_FILE" ]; then
+    # Format: "timestamp count"
+    read -r file_time count < "$RATE_LIMIT_FILE" 2>/dev/null || true
+    if [ -z "$file_time" ] || [ "$file_time" -lt "$window_start" ]; then
+      count=0
+    fi
+  fi
+  
+  # Verhoog count
+  count=$((count + 1))
+  
+  # Schrijf nieuwe count
+  echo "$now $count" > "$RATE_LIMIT_FILE"
+  
+  if [ "$count" -ge "$RATE_LIMIT_MAX" ]; then
+    log "⚠️ Rate limit bereikt ($count requests in laatste $RATE_LIMIT_WINDOW)s"
+    return 1
+  fi
+  return 0
+}
+
+# Rate limit info ophalen van GitHub
+rate_limit_info() {
+  local remaining
+  remaining=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown")
+  local limit
+  limit=$(gh api rate_limit --jq '.resources.core.limit' 2>/dev/null || echo "unknown")
+  log "GitHub API rate limit: $remaining/$limit remaining"
+  echo "$remaining"
+}
+
 report() { echo "[$(date '+%Y-%m-%d %H:%M:%S %Z')] $*"; }
 
 maybe_mutate() {
