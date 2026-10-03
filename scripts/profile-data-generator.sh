@@ -48,7 +48,7 @@ get_github_repo_stats() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')]   Fetching GitHub repo stats for $username..." >&2
   
   if [ "$PDG_DRY_RUN" = "yes" ]; then
-    echo '{"repos": [{"name": "my-resume", "stars": 10, "description": "CV", "language": "HTML", "url": "https://github.com/itsdarklikehell/my-resume"}], "skills": {"Shell": {"repos": 5, "percentage": 20}, "Python": {"repos": 10, "percentage": 40}}, "stats": {"total_repos": 40, "total_stars": 100, "languages": 4}, "contributions": []}'
+    echo '{"repos": [{"name": "my-resume", "stars": 10, "description": "CV", "language": "HTML", "url": "https://github.com/itsdarklikehell/my-resume", "fork": false}], "skills": {"Shell": {"repos": 5, "percentage": 20}, "Python": {"repos": 10, "percentage": 40}}, "stats": {"total_repos": 40, "total_stars": 100, "languages": 4, "own_repos": 30, "fork_repos": 10, "own_stars": 95, "fork_stars": 5, "total_forks": 12}, "contributions": []}'
     return
   fi
   
@@ -66,7 +66,9 @@ get_github_repo_stats() {
       language: (.language // "Unknown"),
       created: .created_at,
       updated: .updated_at,
-      topics: (.topics // [])
+      topics: (.topics // []),
+      fork: (.fork // false),
+      archived: (.archived // false)
     }]' 2>/dev/null || echo "[]")
     
     local count
@@ -94,7 +96,8 @@ else:
     page=$((page + 1))
   done
   
-  # Calculate skills based on languages
+  # Calculate skills based on languages — ALLEEN originele repos.
+  # Forks meerekenen zou talen tonen die niet van jou zijn (en badges opblazen).
   local skills
   skills=$(echo "$repos" | python3 -c "
 import sys, json
@@ -102,6 +105,8 @@ try:
     repos = json.load(sys.stdin)
     lang_counts = {}
     for repo in repos:
+        if repo.get('fork'):
+            continue
         lang = repo.get('language', 'Unknown')
         if lang in ('Unknown', '', None):
             continue
@@ -118,11 +123,21 @@ except Exception as e:
     print('{}')
 " 2>/dev/null || echo "{}")
   
-  # Get stats
+  # Get stats — gesplitst in origineel werk vs forks.
+  # 'Repos' op de CV moet eigen werk tonen; forks opblazen het cijfer (89% van
+  # deze account is fork) en ondermijnen de geloofwaardigheid bij een recruiter.
   local total_repos total_stars languages
+  local own_repos fork_repos own_stars fork_stars
   total_repos=$(echo "$repos" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")
   total_stars=$(echo "$repos" | python3 -c "import sys,json; print(sum(r.get('stars',0) for r in json.load(sys.stdin)))" 2>/dev/null || echo "0")
-  languages=$(echo "$repos" | python3 -c "import sys,json; print(len(set(r.get('language') for r in json.load(sys.stdin) if r.get('language') not in ('Unknown','',None))))" 2>/dev/null || echo "0")
+  languages=$(echo "$repos" | python3 -c "import sys,json; print(len(set(r.get('language') for r in json.load(sys.stdin) if not r.get('fork') and r.get('language') not in ('Unknown','',None))))" 2>/dev/null || echo "0")
+
+  own_repos=$(echo "$repos" | python3 -c "import sys,json; print(sum(1 for r in json.load(sys.stdin) if not r.get('fork')))" 2>/dev/null || echo "0")
+  fork_repos=$(echo "$repos" | python3 -c "import sys,json; print(sum(1 for r in json.load(sys.stdin) if r.get('fork')))" 2>/dev/null || echo "0")
+  own_stars=$(echo "$repos" | python3 -c "import sys,json; print(sum(r.get('stars',0) for r in json.load(sys.stdin) if not r.get('fork')))" 2>/dev/null || echo "0")
+  fork_stars=$(echo "$repos" | python3 -c "import sys,json; print(sum(r.get('stars',0) for r in json.load(sys.stdin) if r.get('fork')))" 2>/dev/null || echo "0")
+  local total_forks
+  total_forks=$(echo "$repos" | python3 -c "import sys,json; print(sum(r.get('forks',0) for r in json.load(sys.stdin) if not r.get('fork')))" 2>/dev/null || echo "0")
 
   # Sanity-guard: total_stars moet de som van de repo-sterren zijn.
   # Een 0 hier (terwijl repos sterren hebben) betekent een kapotte pijplijn.
@@ -149,7 +164,7 @@ except Exception as e:
   }]' 2>/dev/null || echo "[]")
   
   # Build stats object
-  echo "{\"repos\": $repos, \"skills\": $skills, \"stats\": {\"total_repos\": $total_repos, \"total_stars\": $total_stars, \"languages\": $languages}, \"contributions\": $contributions}"
+  echo "{\"repos\": $repos, \"skills\": $skills, \"stats\": {\"total_repos\": $total_repos, \"total_stars\": $total_stars, \"languages\": $languages, \"own_repos\": $own_repos, \"fork_repos\": $fork_repos, \"own_stars\": $own_stars, \"fork_stars\": $fork_stars, \"total_forks\": $total_forks}, \"contributions\": $contributions}"
 }
 
 # Function: check of response JSON is (geen HTML checkpoint)

@@ -49,6 +49,14 @@ for f in github-data.json profile-data.json; do
   fi
 done
 
+# De PDF wordt in de repo zelf gegenereerd (niet in $REPOS_DIR), dus die
+# controleren we op de doellocatie. Ontbreken is geen fout: dan is er nog
+# geen PDF gemaakt.
+RDP_PDF=""
+for cand in "$RDP_REPO_DIR"/*.pdf; do
+  [ -f "$cand" ] && RDP_PDF="$(basename "$cand")" && break
+done
+
 # --- Valideer de bron-JSON vóór we iets aanraken -------------------------
 validate_json() {
   python3 - "$1" <<'PY' 2>/dev/null
@@ -66,6 +74,15 @@ if name == 'github-data.json':
     got = inner.get('total_stars', 0)
     assert got == expected, f'total_stars {got} != som {expected}'
     assert inner.get('total_repos', 0) == len(repos), 'total_repos != len(repos)'
+    # Origineel vs fork moet consistent zijn met de repo-lijst
+    forks = [r for r in repos if r.get('fork')]
+    own = [r for r in repos if not r.get('fork')]
+    assert inner.get('fork_repos', -1) == len(forks), f"fork_repos != {len(forks)}"
+    assert inner.get('own_repos', -1) == len(own), f"own_repos != {len(own)}"
+    assert inner.get('own_stars', -1) == sum(r.get('stars', 0) for r in own), 'own_stars klopt niet'
+    assert inner.get('fork_stars', -1) == sum(r.get('stars', 0) for r in forks), 'fork_stars klopt niet'
+    # Skills mogen alleen originele talen bevatten
+    assert inner.get('languages', 0) > 0, 'languages is 0'
     assert isinstance(s.get('skills'), dict) and s['skills'], 'skills ontbreekt'
     assert isinstance(s.get('contributions'), list), 'contributions ontbreekt'
 else:
@@ -84,6 +101,9 @@ done
 
 # --- Kopieer en check of er iets veranderd is ---------------------------
 changed=0
+# PDF: alleen melden dat hij meegaat, niet kopieren (staat al in de repo)
+[ -n "$RDP_PDF" ] && git -C "$RDP_REPO_DIR" status --porcelain "$RDP_PDF" 2>/dev/null | grep -q . && changed=1
+
 for f in github-data.json profile-data.json; do
   if ! cmp -s "$RDP_SOURCE_DIR/$f" "$RDP_REPO_DIR/$f" 2>/dev/null; then
     cp "$RDP_SOURCE_DIR/$f" "$RDP_REPO_DIR/$f"
@@ -109,6 +129,8 @@ cd "$RDP_REPO_DIR" || { log "❌ kan niet naar $RDP_REPO_DIR"; exit 1; }
 
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   git add github-data.json profile-data.json 2>/dev/null || true
+  # PDF meenemen als die bestaat
+  [ -n "$RDP_PDF" ] && git add "$RDP_PDF" 2>/dev/null || true
   git commit -m "chore(data): profieldata automatisch bijgewerkt
 
 Gegenereerd door profile-data-generator.sh en gepubliceerd door
