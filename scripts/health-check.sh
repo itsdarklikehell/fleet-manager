@@ -94,6 +94,16 @@ scripts=(
   "a2a-bridge.sh"
   "webhook-handler.sh"
   "autonomous-pr-workflow.sh"
+  "release-automation.sh"
+  "changelog-generator.sh"
+  "secret-scanning.sh"
+  "license-compliance-check.sh"
+  "repo-health-score.sh"
+  "security-advisory-monitor.sh"
+  "code-quality-metrics.sh"
+  "automated-dependency-updates.sh"
+  "branch-protection-enforcement.sh"
+  "repo-archiving-suggestions.sh"
 )
 
 script_ok=0

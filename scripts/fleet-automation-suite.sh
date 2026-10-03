@@ -71,4 +71,34 @@ run_script "a2a-bridge.sh" "A2A Bridge"
 # Fase 8: Webhook Handler
 run_script "webhook-handler.sh" "Webhook Handler"
 
+# Fase 9: Release Automation
+run_script "release-automation.sh" "Release Automation"
+
+# Fase 10: Changelog Generator
+run_script "changelog-generator.sh" "Changelog Generator"
+
+# Fase 11: Secret Scanning
+run_script "secret-scanning.sh" "Secret Scanning"
+
+# Fase 12: License Compliance
+run_script "license-compliance-check.sh" "License Compliance Check"
+
+# Fase 13: Repo Health Score
+run_script "repo-health-score.sh" "Repo Health Score"
+
+# Fase 14: Security Advisory Monitor
+run_script "security-advisory-monitor.sh" "Security Advisory Monitor"
+
+# Fase 15: Code Quality Metrics
+run_script "code-quality-metrics.sh" "Code Quality Metrics"
+
+# Fase 16: Automated Dependency Updates
+run_script "automated-dependency-updates.sh" "Automated Dependency Updates"
+
+# Fase 17: Branch Protection Enforcement
+run_script "branch-protection-enforcement.sh" "Branch Protection Enforcement"
+
+# Fase 18: Repo Archiving Suggestions
+run_script "repo-archiving-suggestions.sh" "Repo Archiving Suggestions"
+
 log "=== Fleet Automation Suite klaar ==="
