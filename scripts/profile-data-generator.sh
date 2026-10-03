@@ -17,10 +17,13 @@ PDG_USERNAME_THM="${PDG_USERNAME_THM:-SgtStroopwafel}"
 PDG_USERNAME_HTB="${PDG_USERNAME_HTB:-01a0f22b-f959-73b9-925c-c2e2e350db97}"
 PDG_USERNAME_CYLAB="${PDG_USERNAME_CYLAB:-SgtStroopwafel}"
 
+# STDOUT-CONTRACT: de get_*_stats functies hieronder leveren JSON via stdout.
+# Alle diagnostiek gaat daarom expliciet naar stderr — een log()-aanroep zou
+# bij een onbeschrijfbaar LOG_FILE de JSON corrumperen.
 # Function: haal GitHub stats op
 get_github_stats() {
   local username="$1"
-  log "  Fetching GitHub stats for $username..."
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')]   Fetching GitHub stats for $username..." >&2
   
   if [ "$PDG_DRY_RUN" = "yes" ]; then
     echo '"total_repos": 50, "total_stars": 100'
@@ -42,7 +45,7 @@ get_github_stats() {
 # Function: haal GitHub repository stats op
 get_github_repo_stats() {
   local username="$1"
-  log "  Fetching GitHub repo stats for $username..."
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')]   Fetching GitHub repo stats for $username..." >&2
   
   if [ "$PDG_DRY_RUN" = "yes" ]; then
     echo '{"repos": [{"name": "my-resume", "stars": 10, "description": "CV", "language": "HTML", "url": "https://github.com/itsdarklikehell/my-resume"}], "skills": {"Shell": {"repos": 5, "percentage": 20}, "Python": {"repos": 10, "percentage": 40}}, "stats": {"total_repos": 40, "total_stars": 100, "languages": 4}, "contributions": []}'
@@ -123,14 +126,16 @@ except Exception as e:
 
   # Sanity-guard: total_stars moet de som van de repo-sterren zijn.
   # Een 0 hier (terwijl repos sterren hebben) betekent een kapotte pijplijn.
+  # LET OP: deze functie levert JSON via stdout — waarschuwingen gaan naar
+  # stderr, anders corrumperen ze de JSON in de command-substitution.
   local expected_stars
   expected_stars=$(echo "$repos" | python3 -c "import sys,json; print(sum(r.get('stars',0) for r in json.load(sys.stdin)))" 2>/dev/null || echo "0")
   if [ "$total_stars" != "$expected_stars" ]; then
-    log "    ⚠️ total_stars mismatch ($total_stars != $expected_stars) — herberekenen"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')]     ⚠️ total_stars mismatch ($total_stars != $expected_stars) — herberekenen" >&2
     total_stars="$expected_stars"
   fi
   if [ "$total_repos" -gt 0 ] && [ "$total_stars" = "0" ] && [ "$expected_stars" != "0" ]; then
-    log "    ❌ total_stars onverwacht 0 bij $total_repos repos — data geweigerd"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')]     ❌ total_stars onverwacht 0 bij $total_repos repos — data geweigerd" >&2
     return 1
   fi
   
@@ -159,7 +164,7 @@ is_valid_json() {
 # Function: haal TryHackMe stats op
 get_thm_stats() {
   local username="$1"
-  log "  Fetching TryHackMe stats for $username..."
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')]   Fetching TryHackMe stats for $username..." >&2
   
   if [ "$PDG_DRY_RUN" = "yes" ]; then
     echo '{"rank": "N/A", "points": 0}'
@@ -197,14 +202,14 @@ get_thm_stats() {
     fi
   fi
   
-  log "    ⚠️ TryHackMe API niet bereikbaar"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')]     ⚠️ TryHackMe API niet bereikbaar" >&2
   echo '{"rank": "N/A", "points": 0}'
 }
 
 # Function: haal Hack The Box stats op
 get_htb_stats() {
   local machine_id="$1"
-  log "  Fetching Hack The Box stats for $machine_id..."
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')]   Fetching Hack The Box stats for $machine_id..." >&2
   
   if [ "$PDG_DRY_RUN" = "yes" ]; then
     echo '{"rank": "N/A", "points": 0}'
@@ -222,14 +227,14 @@ get_htb_stats() {
     return
   fi
   
-  log "    ⚠️ Hack The Box API niet bereikbaar"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')]     ⚠️ Hack The Box API niet bereikbaar" >&2
   echo '{"rank": "N/A", "points": 0}'
 }
 
 # Function: haal CyLab Academy stats op
 get_cylab_stats() {
   local username="$1"
-  log "  Fetching CyLab Academy stats for $username..."
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')]   Fetching CyLab Academy stats for $username..." >&2
   
   if [ "$PDG_DRY_RUN" = "yes" ]; then
     echo '{"rank": "N/A", "points": 0}'
@@ -254,7 +259,7 @@ get_cylab_stats() {
     fi
   fi
   
-  log "    ⚠️ CyLab Academy API niet bereikbaar"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')]     ⚠️ CyLab Academy API niet bereikbaar" >&2
   echo '{"rank": "N/A", "points": 0}'
 }
 

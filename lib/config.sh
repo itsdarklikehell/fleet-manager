@@ -111,7 +111,10 @@ log() {
   while [ -f "$lockfile" ] && [ $waited -lt 50 ]; do
     sleep 0.1; ((waited++)) || true
   done
-  echo "[$ts] $msg" >> "$LOG_FILE" 2>/dev/null || echo "[$ts] $msg"
+  # Fallback naar stderr, NOOIT naar stdout: deze functie wordt ook gebruikt
+  # binnen command-substitution die JSON opvangt. Een stdout-fallback zou die
+  # JSON corrumperen (leeg/ongeldig bestand) zodra LOG_FILE onbeschrijfbaar is.
+  echo "[$ts] $msg" >> "$LOG_FILE" 2>/dev/null || echo "[$ts] $msg" >&2
   rm -f "$lockfile" 2>/dev/null || true
 }
 
