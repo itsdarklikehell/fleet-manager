@@ -76,45 +76,50 @@ sys.exit(0 if s.connect_ex(('127.0.0.1',$PORT))==0 else 1)
   sleep 0.1
 done
 
-if "$CHROME" --headless=new --disable-gpu --no-sandbox --disable-dev-shm-usage \
-     --user-data-dir="$TMPPROF" \
-     --virtual-time-budget=15000 \
-     --no-pdf-header-footer \
-     --print-to-pdf="$OUT_PDF" \
-     "http://127.0.0.1:$PORT/index.html" >/dev/null 2>&1; then
-  if [ -s "$OUT_PDF" ]; then
-    size=$(stat -c%s "$OUT_PDF" 2>/dev/null || echo 0)
-    log "  ✅ PDF gegenereerd: $RPG_BASENAME.pdf ($((size/1024)) KB)"
-  else
-    log "  ❌ PDF is leeg"
-    rm -f "$OUT_PDF"
-    exit 1
+# Rendert één taalversie. De taal gaat via ?lang= mee omdat Chrome hier een
+# verse instantie is zonder localStorage — de pagina leest die parameter uit
+# (zie applyLang in index.html).
+render_lang() {
+  local lang="$1" out="$2" label="$3"
+  rm -f "$out"
+  if ! "$CHROME" --headless=new --disable-gpu --no-sandbox --disable-dev-shm-usage \
+       --user-data-dir="$TMPPROF" \
+       --virtual-time-budget=15000 \
+       --no-pdf-header-footer \
+       --print-to-pdf="$out" \
+       "http://127.0.0.1:$PORT/index.html?lang=$lang" >/dev/null 2>&1; then
+    log "  ❌ Chrome-render mislukt ($label)"
+    rm -f "$out"
+    return 1
   fi
-else
-  log "  ❌ Chrome-render mislukt"
-  rm -f "$OUT_PDF"
-  exit 1
+  if [ ! -s "$out" ]; then
+    log "  ❌ PDF is leeg ($label)"
+    rm -f "$out"
+    return 1
+  fi
+  local size
+  size=$(stat -c%s "$out" 2>/dev/null || echo 0)
+  log "  ✅ $(basename "$out") ($label, $((size/1024)) KB)"
+
+  # De live data moet meegerenderd zijn — anders lever je stil een leeg CV af
+  if command -v pdftotext >/dev/null 2>&1; then
+    if pdftotext "$out" - 2>/dev/null | grep -qi "unable to load live data"; then
+      log "  ❌ PDF bevat 'Unable to load live data' — data niet meegerenderd ($label)"
+      return 1
+    fi
+  fi
+  return 0
+}
+
+OUT_PDF_EN="$RPG_REPO_DIR/$RPG_BASENAME-en.pdf"
+rc=0
+render_lang nl "$OUT_PDF"    "NL" || rc=1
+render_lang en "$OUT_PDF_EN" "EN" || rc=1
+
+if command -v pdftotext >/dev/null 2>&1 && [ -s "$OUT_PDF" ] && [ -s "$OUT_PDF_EN" ]; then
+  log "  ✅ beide versies bevatten de live data"
 fi
 
-# Verifieer dat de live data meegerenderd is (geen "Unable to load" in de PDF)
-if command -v pdftotext >/dev/null 2>&1; then
-  if pdftotext "$OUT_PDF" - 2>/dev/null | grep -qi "unable to load live data"; then
-    log "  ❌ PDF bevat 'Unable to load live data' — data is niet meegerenderd"
-    exit 1
-  fi
-  log "  ✅ PDF bevat de live data"
-fi
-
-# Pagina moet naar de eigen PDF wijzen i.p.v. de externe link
-if grep -q 'canva.link' "$RPG_REPO_DIR/index.html"; then
-  python3 - "$RPG_REPO_DIR/index.html" "$RPG_BASENAME.pdf" <<'PY'
-import re, sys
-path, pdfname = sys.argv[1], sys.argv[2]
-src = open(path).read()
-src = re.sub(r'href="https://canva\.link/[^"]*"', f'href="{pdfname}" download', src)
-open(path, 'w').write(src)
-print(f"  ✅ Download-knop wijst nu naar {pdfname}")
-PY
-fi
+[ "$rc" -eq 0 ] || exit 1
 
 log "=== Resume PDF Generate klaar ==="

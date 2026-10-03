@@ -52,9 +52,9 @@ done
 # De PDF wordt in de repo zelf gegenereerd (niet in $REPOS_DIR), dus die
 # controleren we op de doellocatie. Ontbreken is geen fout: dan is er nog
 # geen PDF gemaakt.
-RDP_PDF=""
+RDP_PDFS=()
 for cand in "$RDP_REPO_DIR"/*.pdf; do
-  [ -f "$cand" ] && RDP_PDF="$(basename "$cand")" && break
+  [ -f "$cand" ] && RDP_PDFS+=("$(basename "$cand")")
 done
 
 # --- Valideer de bron-JSON vóór we iets aanraken -------------------------
@@ -101,8 +101,12 @@ done
 
 # --- Kopieer en check of er iets veranderd is ---------------------------
 changed=0
-# PDF: alleen melden dat hij meegaat, niet kopieren (staat al in de repo)
-[ -n "$RDP_PDF" ] && git -C "$RDP_REPO_DIR" status --porcelain "$RDP_PDF" 2>/dev/null | grep -q . && changed=1
+# PDF's: alleen melden dat ze meegaan, niet kopieren (staan al in de repo)
+if [ "${#RDP_PDFS[@]}" -gt 0 ]; then
+  for _pdf in "${RDP_PDFS[@]}"; do
+    git -C "$RDP_REPO_DIR" status --porcelain "$_pdf" 2>/dev/null | grep -q . && changed=1
+  done
+fi
 
 for f in github-data.json profile-data.json; do
   if ! cmp -s "$RDP_SOURCE_DIR/$f" "$RDP_REPO_DIR/$f" 2>/dev/null; then
@@ -129,8 +133,12 @@ cd "$RDP_REPO_DIR" || { log "❌ kan niet naar $RDP_REPO_DIR"; exit 1; }
 
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   git add github-data.json profile-data.json 2>/dev/null || true
-  # PDF meenemen als die bestaat
-  [ -n "$RDP_PDF" ] && git add "$RDP_PDF" 2>/dev/null || true
+  # Social-preview-kaart meenemen als die bestaat
+  [ -f "$RDP_REPO_DIR/og-image.png" ] && git add og-image.png 2>/dev/null || true
+  # Beide PDF's meenemen (NL + EN) als ze bestaan
+  if [ "${#RDP_PDFS[@]}" -gt 0 ]; then
+    for _pdf in "${RDP_PDFS[@]}"; do git add "$_pdf" 2>/dev/null || true; done
+  fi
   git commit -m "chore(data): profieldata automatisch bijgewerkt
 
 Gegenereerd door profile-data-generator.sh en gepubliceerd door
