@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/release-notes-auto.sh - Release notes automation
+set -euo pipefail
 source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"

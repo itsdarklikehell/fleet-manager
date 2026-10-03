@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/notification-digest.sh - Dagelijkse samenvatting van GitHub activiteit
 # Combineert alle rapporten in één digest en stuurt naar Telegram
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

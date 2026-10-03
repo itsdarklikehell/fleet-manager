@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/release-publishing.sh - Automatische release publishing
 # Maak GitHub releases op basis van versie tags en commit messages
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

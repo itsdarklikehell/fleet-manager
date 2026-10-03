@@ -11,6 +11,7 @@
 #   RPG_REPO_DIR   git-clone met index.html (default: scratch/itsdarklikehell-my-resume)
 #   RPG_BASENAME   bestandsnaam zonder extensie (default: bauke-molenaar-cv)
 
+set -euo pipefail
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

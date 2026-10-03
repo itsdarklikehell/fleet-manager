@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/profile-data-generator.sh - Genereert profile-data.json met live statussen
 # Haalt live data op van GitHub, TryHackMe, Hack The Box en CyLab Academy
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/inbox-weekly-report.sh - Wekelijkse samenvatting van inbox items
 # Toont nieuwe issues, PRs en activiteit van de afgelopen 7 dagen
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

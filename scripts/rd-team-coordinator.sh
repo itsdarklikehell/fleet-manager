@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/rd-team-coordinator.sh - R&D Team Coordinator
 # Coördineert R&D teams voor elke repo
+set -euo pipefail
 source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"

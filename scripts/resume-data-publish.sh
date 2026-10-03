@@ -14,6 +14,7 @@
 #   RDP_SOURCE_DIR  pad naar de gegenereerde JSON (default: $REPOS_DIR/itsdarklikehell-my-resume)
 #   RDP_BRANCH      branch (default: main)
 
+set -euo pipefail
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

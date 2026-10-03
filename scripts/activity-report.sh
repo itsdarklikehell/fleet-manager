@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/activity-report.sh - Rapporteert alle activiteit van de dag
 # Toont issues, PRs, commits en CI status voor alle key repos
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

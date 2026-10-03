@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/inbox-alerts.sh - Alerts voor belangrijke items
 # Waarschuwt voor belangrijke issues, PRs en security items
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

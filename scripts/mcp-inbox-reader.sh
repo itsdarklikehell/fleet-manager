@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/mcp-inbox-reader.sh - MCP-gebaseerde inbox reader
 # Gebruikt GitHub MCP server voor diepere integratie
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

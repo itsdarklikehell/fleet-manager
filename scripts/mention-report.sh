@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/mention-report.sh - Rapporteert alle mentions
 # Toont alle mentions van de afgelopen periode
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

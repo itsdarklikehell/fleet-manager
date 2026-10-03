@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/actions-variables.sh - Audit alle variables in alle repos
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

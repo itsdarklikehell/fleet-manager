@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/test-execution-reporting.sh - Parse test results and post PR comments
 # Voert tests uit en rapporteert resultaten als PR comment
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

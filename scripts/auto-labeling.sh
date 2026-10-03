@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/auto-labeling.sh - Automatische GitHub labeling
 # Label issues en PRs op basis van patronen en bestandsstructuur
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

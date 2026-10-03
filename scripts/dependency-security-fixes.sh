@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/dependency-security-fixes.sh - Auto-create security fix PRs
 # Scan repositories for vulnerable dependencies and create fix PRs
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

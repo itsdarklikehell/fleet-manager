@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/auto-issue-responder.sh - Automatische issue response system
 # Post sjabblonen antwoorden op veelvoorkomende issue patronen
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

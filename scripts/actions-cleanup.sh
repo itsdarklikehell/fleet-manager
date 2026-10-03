@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/actions-cleanup.sh - Verwijder oude workflow runs
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

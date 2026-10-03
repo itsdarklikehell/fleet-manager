@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/stale-issue-detection.sh - Detecteer en markeer inactieve issues/PRs
 # Issues/PRs die X dagen niet gecommuniceerd, markeren als stale
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

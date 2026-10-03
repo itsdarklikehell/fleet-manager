@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/inbox-trends.sh - Trends in inbox items
 # Toont trends in issues, PRs en activiteit over tijd
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/actions-update.sh - Update alle GitHub Actions workflows naar laatste versie
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/inbox-export.sh - Export inbox data
 # Exporteert inbox data naar JSON en CSV
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/actions-disable.sh - Disable onnodige workflows
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

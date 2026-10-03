@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/ci-failure-report.sh - Rapporteert alle CI failures
 # Toont alle gefaalde CI runs voor alle key repos
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

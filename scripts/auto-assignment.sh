@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/auto-assignment.sh - Automatische issue/PR assignment
 # Assignment op basis van expertise matrix en round-robin
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

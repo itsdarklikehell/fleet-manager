@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/pr-update.sh - Update PRs (title, body, labels, assignees)
+set -euo pipefail
 source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"

@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 # scripts/issue-close.sh - Close issues met comment
+set -euo pipefail
+
+# DRY_RUN guard
+DRY_RUN="${GITHUB_FLEET_DRY_RUN:-}"
+maybe_mutate() {
+  if [ -n "$DRY_RUN" ]; then
+    log "🔒 [DRY-RUN] Would: $*"
+    return 0
+  fi
+  "$@"
+}
 source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"

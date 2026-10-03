@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/log-monitor.sh - Log monitoring
+set -euo pipefail
 source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/multi-repo-coordination.sh - Cross-repository dependency tracking
 # Detecteer inter-repo dependencies en markeer cascading changes nodig
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

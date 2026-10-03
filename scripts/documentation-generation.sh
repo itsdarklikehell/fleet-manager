@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/documentation-generation.sh - Auto-generate API docs
 # Genereer documentatie van code comments en upload naar GitHub Pages
+set -euo pipefail
 set -uo pipefail
 
 source "$(dirname "$0")/../lib/config.sh"

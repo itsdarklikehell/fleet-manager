@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/inbox-reader.sh - Leest GitHub inbox via gh search
 # Gebruikt gh search issues/prs om de inbox te lezen zonder notifications scope
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

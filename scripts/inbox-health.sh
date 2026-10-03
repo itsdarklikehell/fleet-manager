@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/inbox-health.sh - Health check van inbox
 # Controleert de gezondheid van de inbox voor alle key repos
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

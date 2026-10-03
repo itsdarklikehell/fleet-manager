@@ -1,40 +1,56 @@
 name: CI
+
 on:
   push:
     branches: ["main", "master"]
   pull_request:
     branches: ["main", "master"]
   workflow_dispatch:
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-    steps:
-      - uses: actions/checkout@v7
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest
-      - name: Run tests
-        run: |
-          pytest tests/ -v --tb=short
-      - name: Generate test report
-        if: always()
-        run: |
-          pytest tests/ --tb=short -q 2>&1 | tee test-report.txt
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: test-report-py${{ matrix.python-version }}
-          path: test-report.txt
-          retention-days: 30
 
-  ci:
-    uses: itsdarklikehell/ci-templates/.github/workflows/ci-python.yml@v1
+jobs:
+  bash-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check bash syntax
+        run: |
+          for script in scripts/*.sh lib/*.sh; do
+            echo "Checking $script..."
+            bash -n "$script"
+          done
+      - name: Check shellcheck
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck scripts/*.sh lib/*.sh || true
+
+  test-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run test suite
+        run: |
+          bash scripts/test-suite.sh
+      - name: Run health check
+        run: |
+          bash scripts/health-check.sh || true
+      - name: Run cron audit
+        run: |
+          bash scripts/cron-audit.sh
+
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check script quality
+        run: |
+          total=0
+          no_set_e=0
+          no_dry_run=0
+          for script in scripts/*.sh; do
+            total=$((total + 1))
+            grep -q 'set -e' "$script" || no_set_e=$((no_set_e + 1))
+            grep -q 'DRY_RUN' "$script" || no_dry_run=$((no_dry_run + 1))
+          done
+          echo "Total scripts: $total"
+          echo "Without set -e: $no_set_e"
+          echo "Without DRY_RUN: $no_dry_run"

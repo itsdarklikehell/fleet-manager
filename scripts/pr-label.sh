@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/pr-label.sh - Add/remove labels from PRs
+set -euo pipefail
 source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"

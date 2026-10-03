@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/inbox-daily-report.sh - Dagelijkse samenvatting van inbox items
 # Toont nieuwe issues, PRs en activiteit van de afgelopen 24 uur
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

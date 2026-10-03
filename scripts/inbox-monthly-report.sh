@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/inbox-monthly-report.sh - Maandelijkse samenvatting van inbox items
 # Toont nieuwe issues, PRs en activiteit van de afgelopen 30 dagen
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/self-update.sh - Self update voor fleet manager
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

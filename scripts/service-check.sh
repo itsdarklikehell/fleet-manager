@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/service-check.sh - Service monitoring
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

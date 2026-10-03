@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/actions-secrets.sh - Audit alle secrets in alle repos
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

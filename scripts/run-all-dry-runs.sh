@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 # scripts/run-all-dry-runs.sh - Run all scripts in dry-run mode
 # Test alle scripts in een batch om debugging te vereenvoudigen
+set -euo pipefail
+
+# Logging
+log() {
+  local msg="$*"; local ts
+  ts=$(date '+%Y-%m-%d %H:%M:%S')
+  echo "[$ts] $msg" >> "$LOG_FILE" 2>/dev/null || echo "[$ts] $msg" >&2
+}
 set -uo pipefail
 
 SCRATCH="/home/hans/.hermes/cache/scratch"

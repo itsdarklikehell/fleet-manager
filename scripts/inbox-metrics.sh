@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/inbox-metrics.sh - Metrics over inbox
 # Toont gedetailleerde metrics voor alle key repos
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

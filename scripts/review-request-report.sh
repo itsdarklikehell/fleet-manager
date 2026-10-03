@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/review-request-report.sh - Rapporteert alle review requests
 # Toont alle open review requests voor beide accounts
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

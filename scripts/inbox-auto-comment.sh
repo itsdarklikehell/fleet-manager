@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/inbox-auto-comment.sh - Voeg automatisch commentaar toe
+set -euo pipefail
 source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"

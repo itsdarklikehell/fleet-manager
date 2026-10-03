@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/inbox-dashboard.sh - Dashboard van inbox
 # Toont een overzichtelijk dashboard van alle inbox items
+set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 

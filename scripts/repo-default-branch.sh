@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # scripts/repo-default-branch.sh - Change default branch
+set -euo pipefail
 source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"

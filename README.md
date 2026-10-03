@@ -1,10 +1,6 @@
-﻿# GitHub Fleet Manager
+# GitHub Fleet Manager
 
 Automatische GitHub fleet management met cron jobs, monitoring, en rapportage.
-
-<video src="https://raw.githubusercontent.com/itsdarklikehell/fleet-manager/main/gource.mp4" controls width="100%"></video>
-
-*Gource visualization showing the repository's commit history. See the [Gource workflow](.github/workflows/gource.yml) for details.*
 
 ## Functies
 
@@ -48,298 +44,98 @@ Automatische GitHub fleet management met cron jobs, monitoring, en rapportage.
 | `pr-review-agent.sh` | Geautomatiseerde PR reviews | Elke 6 uur |
 | `ci-failure-summaries.sh` | CI failure samenvattingen | Dagelijks |
 | `delivery-router.sh` | Multi-platform delivery | Dagelijks |
-| `webhook-handler.sh` | Auto-review, auto-triage, CI alerts | Real-time |
-| `model-router.sh` | Language-based model selection | Dagelijks |
-| `a2a-bridge.sh` | A2A agent queries | Dagelijks |
-| `mcp-github-bridge.sh` | GitHub MCP server integratie | Dagelijks |
-| `fleet-automation-suite.sh` | Master orchestrator | Wekelijks |
-| `autonomous-pr-workflow.sh` | Autonomous PR creation | On-demand |
-| `multi-tool-chaining.sh` | Multi-tool chaining voor complexe taken | Wekelijks |
-| `release-automation.sh` | Conventional commits → releases | Wekelijks |
-| `changelog-generator.sh` | Auto CHANGELOG.md generatie | Wekelijks |
-| `secret-scanning.sh` | Scan voor hardcoded credentials | Dagelijks |
-| `license-compliance-check.sh` | License compliance check | Wekelijks |
-| `repo-health-score.sh` | Repo health score berekening | Dagelijks |
-| `security-advisory-monitor.sh` | Security advisory monitoring | Dagelijks |
-| `code-quality-metrics.sh` | Code quality metrics | Wekelijks |
-| `automated-dependency-updates.sh` | Auto dependency update PRs | Dagelijks |
-| `branch-protection-enforcement.sh` | Branch protection enforcement | Wekelijks |
-| `repo-archiving-suggestions.sh` | Repo archiving suggesties | Wekelijks |
-| `run-all-dry-runs.sh` | Batch test alle scripts in dry-run mode | On-demand |
-| `health-check.sh` | Health check voor alle scripts | On-demand |
+| `metrics-collector.sh` | Fleet health metrics | Dagelijks |
+| `fleet-doctor.sh` | Incident detectie en diagnose | Dagelijks |
+| `rollback.sh` | Rollback mechanisme voor mutaties | Wekelijks |
+| `repo-standardizer.sh` | Standaardiseer repo instellingen | Wekelijks |
+| `pr-description-generator.sh` | Genereert PR beschrijvingen | Ad-hoc |
+| `release-notes-generator.sh` | Genereert release notes | Ad-hoc |
+| `generate-docs.sh` | Genereert script documentatie | Ad-hoc |
+| `test-suite.sh` | Test suite voor alle scripts | Ad-hoc |
+| `quality-upgrade.sh` | Batch upgrade scripts | Ad-hoc |
+| `cron-audit.sh` | Audit en fix cron jobs | Ad-hoc |
 
-## 🚀 Installatie
+## 🏗️ Architectuur
 
-```bash
-# Clone de repository
-git clone https://github.com/itsdarklikehell/fleet-manager.git
-cd fleet-manager
-
-# Kopieer het environment template
-cp .env.example .env
-
-# Vul je GitHub tokens in
-# Bewerk .env en voeg je tokens toe:
-# - GH_TOKEN_ITSDARKLIKEHELL: GitHub token voor itsdarklikehell
-# - GH_TOKEN_HMOL33: GitHub token voor hmol33
-# - TELEGRAM_TOKEN: Telegram bot token (optioneel)
-# - TELEGRAM_CHAT_ID: Telegram chat ID (optioneel)
-
-# Zorg dat alle scripts executebaar zijn
-chmod +x scripts/*.sh
-
-# Voer een health check uit
-bash scripts/health-check.sh
+```
+fleet-manager/
+├── github_fleet_manager.sh  # Monolithische script (fallback)
+├── lib/
+│   ├── config.sh            # Configuratie + helpers + rate limiter
+│   └── telegram.sh          # Telegram rapportage
+├── scripts/                 # 129 modulaire scripts
+│   ├── inbox-reader.sh
+│   ├── pr-review-agent.sh
+│   ├── metrics-collector.sh
+│   ├── fleet-doctor.sh
+│   ├── rollback.sh
+│   └── ...
+├── docs/                    # Script documentatie
+├── tests/                   # Test resultaten
+└── .github/workflows/       # CI/CD
 ```
 
-## ⚙️ Configuratie
+## 🔧 Configuratie
 
-Alle configuratie gebeurt via environment variables. Zie `.env.example` voor alle beschikbare opties.
+### Environment Variabelen
 
-### GitHub Tokens
-- `GH_TOKEN_ITSDARKLIKEHELL` - GitHub token voor itsdarklikehell repos
-- `GH_TOKEN_HMOL33` - GitHub token voor hmol33 repos
+| Variable | Beschrijving | Default |
+|----------|-------------|---------|
+| `GITHUB_TOKEN` | GitHub API token | Vereist |
+| `TELEGRAM_TOKEN` | Telegram bot token | Optioneel |
+| `TELEGRAM_CHAT_ID` | Telegram chat ID | `1779426583` |
+| `TELEGRAM_CHAT_IDS` | Meerdere chat IDs | `1779426583 -1004424968209 639276511` |
+| `GITHUB_FLEET_DRY_RUN` | DRY_RUN mode | Leeg |
+| `RATE_LIMIT_MAX` | Max API requests per uur | `4500` |
+| `STALE_SCRIPT_AGE` | Max tijd zonder run (seconden) | `86400` |
 
-### Telegram (optioneel)
-- `TELEGRAM_TOKEN` - Telegram bot token
-- `TELEGRAM_CHAT_ID` - Telegram chat ID voor notificaties
+### Cron Jobs
 
-### Script-specifieke opties
-Elke script heeft zijn eigen configuratie via environment variables:
+145+ cron jobs draaien via `github_fleet_wrapper.sh`:
 
 ```bash
-# Dry run mode (test zonder echte acties)
-export RA_DRY_RUN=yes       # Release automation
-export CG_DRY_RUN=yes       # Changelog generator
-export SS_DRY_RUN=yes       # Secret scanning
-# ... enzovoort
+# Dagelijks
+0 4 * * * fleet-doctor
+30 4 * * * metrics-collector
+
+# Wekelijks
+0 5 * * 1 repo-standardizer
+30 5 * * 1 rollback stats
 ```
 
-## 📊 Health Check
+## 📊 Monitoring
 
-Voer een health check uit om de status van alle scripts te controleren:
+- **Health Check**: `health-check.sh` controleert alle scripts, dependencies en cron jobs
+- **Metrics**: `metrics-collector.sh` verzamelt fleet health metrics
+- **Fleet Doctor**: `fleet-doctor.sh` detecteert en diagnoseert incidenten
+- **Rate Limiter**: In `lib/config.sh` voorkomt API rate limit overschrijding
+
+## 🔄 Rollback
+
+`rollback.sh` houdt de laatste 100 mutaties bij en kan ze ongedaan maken:
 
 ```bash
-bash scripts/health-check.sh
+# Laatste 10 mutaties tonen
+bash scripts/rollback.sh list 10
+
+# Laatste mutatie terugdraaien
+bash scripts/rollback.sh rollback 1
+
+# Statistieken tonen
+bash scripts/rollback.sh stats
 ```
 
-Laat zien of:
-- Alle scripts aanwezig en syntax correct zijn
-- Alle afhankelijkheden beschikbaar zijn
-- Alle environment variables correct zijn ingesteld
-- Alle cron jobs actief zijn
-
-## 🔄 Automatisatie
-
-De scripts worden automatisch uitgevoerd via cron. Zie de cron schedule:
+## 🧪 Testen
 
 ```bash
-crontab -l
-```
+# Test suite draaien
+bash scripts/test-suite.sh
 
-Of gebruik de master orchestrator:
-
-```bash
-bash scripts/fleet-automation-suite.sh
-```
-
-## Gebruik
-
-```bash
 # Health check
-./scripts/health-check.sh
+bash scripts/health-check.sh
 
-# Inbox reader
-./scripts/inbox-reader.sh
-
-# PR review agent
-./scripts/pr-review-agent.sh
-
-# CI failure summaries
-./scripts/ci-failure-summaries.sh
-
-# Nightly backlog triage
-./scripts/nightly-backlog-triage.sh
-
-# Docs drift detection
-./scripts/docs-drift-detection.sh
-
-# Dependency audit
-./scripts/dependency-audit.sh
-
-# Delivery router
-./scripts/delivery-router.sh
-
-# Webhook handler
-./scripts/webhook-handler.sh
-
-# Model router
-./scripts/model-router.sh
-
-# A2A bridge
-./scripts/a2a-bridge.sh
-
-# MCP GitHub bridge
-./scripts/mcp-github-bridge.sh
-
-# Release automation
-./scripts/release-automation.sh
-
-# Changelog generator
-./scripts/changelog-generator.sh
-
-# Secret scanning
-./scripts/secret-scanning.sh
-
-# License compliance check
-./scripts/license-compliance-check.sh
-
-# Repo health score
-./scripts/repo-health-score.sh
-
-# Security advisory monitor
-./scripts/security-advisory-monitor.sh
-
-# Code quality metrics
-./scripts/code-quality-metrics.sh
-
-# Automated dependency updates
-./scripts/automated-dependency-updates.sh
-
-# Branch protection enforcement
-./scripts/branch-protection-enforcement.sh
-
-# Repo archiving suggestions
-./scripts/repo-archiving-suggestions.sh
-
-# Fleet automation suite (master orchestrator)
-./scripts/fleet-automation-suite.sh
-
-# Autonomous PR workflow
-./scripts/autonomous-pr-workflow.sh
-
-# Multi-tool chaining
-./scripts/multi-tool-chaining.sh
-
-# Netwerk scan
-./scripts/network-scan.sh
-
-# Systeem health
-./scripts/system-health.sh
-
-# Service check
-./scripts/service-check.sh
-
-# Log monitor
-./scripts/log-monitor.sh
-
-# Security audit
-./scripts/security-audit.sh
-
-# Backup verify
-./scripts/backup-verify.sh
-
-# CI failure check
-./scripts/ci-failure-check.sh
-
-# PR review auto
-./scripts/pr-review-auto.sh
-
-# Issue triage auto
-./scripts/issue-triage-auto.sh
-
-# Release auto
-./scripts/release-auto.sh
-
-# Branch cleanup auto
-./scripts/branch-cleanup-auto.sh
-
-# Self management
-./scripts/self-update.sh
-./scripts/self-monitor.sh
-./scripts/self-backup.sh
-
-# R&D Team Coordinator
-./scripts/rd-team-coordinator.sh
-
-# Inbox manager
-./scripts/inbox-manager.sh
-
-# Auto-responder
-./scripts/auto-responder.sh
-./scripts/auto-label.sh
-./scripts/auto-assign.sh
-./scripts/auto-close.sh
-./scripts/auto-merge.sh
-
-# Notification digest
-./scripts/notification-digest.sh
-./scripts/activity-report.sh
-./scripts/mention-report.sh
-./scripts/review-request-report.sh
-./scripts/ci-failure-report.sh
-```
-
-## Cron jobs
-
-```bash
-# Dagelijkse jobs
-0 7 * * * ./scripts/network-scan.sh
-15 7 * * * ./scripts/system-health.sh
-30 7 * * * ./scripts/service-check.sh
-45 7 * * * ./scripts/log-monitor.sh
-
-# Weekelijkse jobs
-0 8 * * 1 ./scripts/security-audit.sh
-30 8 * * 1 ./scripts/backup-verify.sh
-
-# Self-management
-0 6 * * * ./scripts/self-update.sh
-15 6 * * * ./scripts/self-monitor.sh
-0 5 1 * * ./scripts/self-backup.sh
-
-# R&D Team Coordinator (wekelijks)
-0 20 * * 0 ./scripts/rd-team-coordinator.sh
-
-# Inbox manager (elke 2 uur)
-30 */2 * * * ./scripts/inbox-manager.sh
-
-# Auto-responder (dagelijkse)
-0 21 * * * ./scripts/auto-responder.sh
-15 21 * * * ./scripts/auto-label.sh
-30 21 * * * ./scripts/auto-assign.sh
-45 21 * * * ./scripts/auto-close.sh
-0 22 * * * ./scripts/auto-merge.sh
-
-# Notification digest (dagelijkse)
-0 23 * * * ./scripts/notification-digest.sh
-15 23 * * * ./scripts/activity-report.sh
-30 23 * * * ./scripts/mention-report.sh
-45 23 * * * ./scripts/review-request-report.sh
-0 0 * * * ./scripts/ci-failure-report.sh
-
-# Fleet automation scripts
-0 */4 * * * ./scripts/inbox-reader.sh
-30 */6 * * * ./scripts/pr-review-agent.sh
-0 7 * * * ./scripts/ci-failure-summaries.sh
-0 2 * * * ./scripts/nightly-backlog-triage.sh
-0 3 * * 1 ./scripts/docs-drift-detection.sh
-0 5 * * * ./scripts/dependency-audit.sh
-0 8 * * * ./scripts/delivery-router.sh
-0 9 * * * ./scripts/model-router.sh
-30 9 * * * ./scripts/a2a-bridge.sh
-0 30 * * * ./scripts/mcp-github-bridge.sh
-0 4 * * * ./scripts/fleet-automation-suite.sh
-0 7 * * * ./scripts/secret-scanning.sh
-30 5 * * * ./scripts/automated-dependency-updates.sh
-30 7 * * * ./scripts/repo-health-score.sh
-0 6 * * * ./scripts/security-advisory-monitor.sh
-0 10 * * 1 ./scripts/release-automation.sh
-30 10 * * 1 ./scripts/changelog-generator.sh
-0 3 * * 2 ./scripts/license-compliance-check.sh
-0 4 * * 3 ./scripts/code-quality-metrics.sh
-0 3 * * 4 ./scripts/branch-protection-enforcement.sh
-0 3 * * 5 ./scripts/repo-archiving-suggestions.sh
+# Cron audit
+bash scripts/cron-audit.sh
 ```
 
 ## 📝 Licentie
