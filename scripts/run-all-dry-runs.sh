@@ -11,6 +11,9 @@ export RA_DRY_RUN=yes CG_DRY_RUN=yes SS_DRY_RUN=yes LCC_DRY_RUN=yes
 export RHS_DRY_RUN=yes SAM_DRY_RUN=yes CQM_DRY_RUN=yes ADU_DRY_RUN=yes
 export BPE_DRY_RUN=yes RAS_DRY_RUN=yes WH_DRY_RUN=yes MR_DRY_RUN=yes
 export A2A_DRY_RUN=yes MCP_DRY_RUN=yes APR_ENABLED=no MTC_ENABLED=no
+export AIR_DRY_RUN=yes AL_DRY_RUN=yes AM_DRY_RUN=yes SID_DRY_RUN=yes
+export RP_DRY_RUN=yes DG_DRY_RUN=yes DSF_DRY_RUN=yes TR_DRY_RUN=yes
+export MRC_DRY_RUN=yes
 
 cd "$FLEET_DIR"
 
@@ -30,6 +33,16 @@ scripts=(
   "automated-dependency-updates.sh"
   "branch-protection-enforcement.sh"
   "repo-archiving-suggestions.sh"
+  "mcp-inbox-reader.sh"
+  "auto-issue-responder.sh"
+  "auto-labeling.sh"
+  "auto-merge.sh"
+  "stale-issue-detection.sh"
+  "release-publishing.sh"
+  "documentation-generation.sh"
+  "dependency-security-fixes.sh"
+  "test-execution-reporting.sh"
+  "multi-repo-coordination.sh"
 )
 
 passed=0

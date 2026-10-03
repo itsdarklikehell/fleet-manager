@@ -102,7 +102,34 @@ run_script "branch-protection-enforcement.sh" "Branch Protection Enforcement"
 # Fase 18: Repo Archiving Suggestions
 run_script "repo-archiving-suggestions.sh" "Repo Archiving Suggestions"
 
-# Fase 19: Batch Dry-Run Test
+# Fase 20: Auto Issue Responder
+run_script "auto-issue-responder.sh" "Auto Issue Responder"
+
+# Fase 21: Auto Labeling
+run_script "auto-labeling.sh" "Auto Labeling"
+
+# Fase 22: Auto Merge
+run_script "auto-merge.sh" "Auto Merge"
+
+# Fase 23: Stale Issue Detection
+run_script "stale-issue-detection.sh" "Stale Issue Detection"
+
+# Fase 24: Release Publishing
+run_script "release-publishing.sh" "Release Publishing"
+
+# Fase 25: Documentation Generation
+run_script "documentation-generation.sh" "Documentation Generation"
+
+# Fase 26: Dependency Security Fixes
+run_script "dependency-security-fixes.sh" "Dependency Security Fixes"
+
+# Fase 27: Test Execution Reporting
+run_script "test-execution-reporting.sh" "Test Execution Reporting"
+
+# Fase 28: Multi-Repo Coordination
+run_script "multi-repo-coordination.sh" "Multi-Repo Coordination"
+
+# Fase 29: Batch Dry-Run Test
 run_script "run-all-dry-runs.sh" "Batch Dry-Run Test"
 
 log "=== Fleet Automation Suite klaar ==="

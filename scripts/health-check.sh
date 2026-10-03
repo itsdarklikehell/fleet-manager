@@ -105,6 +105,15 @@ scripts=(
   "branch-protection-enforcement.sh"
   "repo-archiving-suggestions.sh"
   "mcp-inbox-reader.sh"
+  "auto-issue-responder.sh"
+  "auto-labeling.sh"
+  "auto-merge.sh"
+  "stale-issue-detection.sh"
+  "release-publishing.sh"
+  "documentation-generation.sh"
+  "dependency-security-fixes.sh"
+  "test-execution-reporting.sh"
+  "multi-repo-coordination.sh"
   "run-all-dry-runs.sh"
 )
 
