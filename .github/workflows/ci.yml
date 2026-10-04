@@ -16,7 +16,7 @@ jobs:
         run: |
           set -euo pipefail
           failed=0
-          for script in scripts/*.sh lib/*.sh; do
+          for script in scripts/*.sh lib/*.sh github_fleet_manager.sh; do
             if [ -f "$script" ]; then
               echo "Checking $script..."
               if ! bash -n "$script"; then
@@ -40,10 +40,11 @@ jobs:
       - name: Run shellcheck (errors)
         run: |
           set -euo pipefail
-          shellcheck --severity=error scripts/*.sh lib/*.sh
+          shellcheck --severity=error scripts/*.sh lib/*.sh github_fleet_manager.sh
       - name: Run shellcheck (warnings)
         run: |
-          shellcheck --severity=warning scripts/*.sh lib/*.sh || true
+          set -euo pipefail
+          shellcheck --severity=warning scripts/*.sh lib/*.sh github_fleet_manager.sh || true
 
   dry-run-tests:
     runs-on: ubuntu-latest

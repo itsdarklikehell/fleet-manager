@@ -2737,7 +2737,7 @@ cmd_branch_naming_check() {
   log "=== Branch Naming Convention Check ==="
   local violations=0
   local GOOD_PATTERN='^(feature|bugfix|fix|hotfix|release|patch|docs|chore|refactor|perf|test|security|spike|infra|ci|build)/[a-zA-Z0-9][a-zA-Z0-9_-]*$'
-  local repos_to_check="${CLEAN_BRANCHES_REPOS:-$KEY_REPOS[@]}"
+  local repos_to_check="${CLEAN_BRANCHES_REPOS:-${KEY_REPOS[@]}}"
   for kr in $repos_to_check; do
     [ -z "$kr" ] && continue
     log "--- $kr ---"
@@ -5028,6 +5028,7 @@ cmd_self_backup() {
   log "=== Self Backup complete ==="
   send_telegram_message "💾 *Self Backup*\n\n*Backups:* $backup_count\n\n📋 Volledig log: $LOG_FILE" || true
 }
+# shellcheck disable=SC2218
 case "${1:-status}" in
   status)
     cmd_status_parallel
@@ -5124,14 +5125,11 @@ case "${1:-status}" in
     log "=== Branch Cleanup ==="
     for kr in $CLEAN_BRANCHES_REPOS; do
       [ -z "$kr" ] && continue
-      local default_branch
       default_branch=$(gh repo view --repo "$kr" --json defaultBranchRef --jq '.defaultBranchRef.name' 2>/dev/null || echo "main")
-      local merged_branches
       merged_branches=$(gh pr list --repo "$kr" --state merged --json headRefName --jq '.[].headRefName' 2>/dev/null | sort -u || true)
       for bname in $merged_branches; do
         [ -z "$bname" ] && continue
         [ "$bname" = "$default_branch" ] && continue
-        local protected
         protected=$(gh api "repos/$kr/branches/$bname" --jq '.protected // false' 2>/dev/null || echo "false")
         [ "$protected" = "true" ] && continue
         log "Deleting merged branch $bname from $kr"
@@ -5167,6 +5165,7 @@ case "${1:-status}" in
     send_telegram_message "👤 *GitHub Fleet Issue Assign*\n\nAssignees ingesteld: ${RET_ISSUE_ASSIGNED:-0}\n\n📋 Volledig log: $LOG_FILE" || true
     ;;
   security-audit)
+    # shellcheck disable=SC2218
     cmd_security_audit
     send_telegram_message "🚨 *GitHub Fleet Security Audit*\n\n*Totaal alerts:* ${RET_SECURITY_AUDIT:-0}\n\n📋 Volledig log: $LOG_FILE" || true
     ;;
@@ -5247,6 +5246,7 @@ case "${1:-status}" in
     send_telegram_message "🌍 *GitHub Fleet CI Carbon Footprint*\n\nZie log voor details\n\n📋 Volledig log: $LOG_FILE" || true
     ;;
   issue-create)
+    # shellcheck disable=SC2218
     cmd_issue_create "$2" "$3" "$4"
     ;;
   pr-create)
@@ -5536,6 +5536,7 @@ Zie log voor details
     send_telegram_message "📋 *Log Monitor*\n\nZie log voor details\n\n📋 Volledig log: $LOG_FILE" || true
     ;;
   security-audit)
+    # shellcheck disable=SC2218
     cmd_security_audit
     send_telegram_message "🔒 *Security Audit*\n\nZie log voor details\n\n📋 Volledig log: $LOG_FILE" || true
     ;;
