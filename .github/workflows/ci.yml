@@ -55,20 +55,36 @@ jobs:
           export GITHUB_FLEET_DRY_RUN=yes
           export DRY_RUN=yes
           failed=0
+          tested=0
+          skipped=0
           for script in scripts/*.sh; do
             [ -f "$script" ] || continue
-            # Skip scripts that need external tools or network
+            # Only test scripts that have DRY_RUN support
             if grep -q 'maybe_mutate\|DRY_RUN' "$script" 2>/dev/null; then
+              # Skip scripts that require arguments (have usage check)
+              if grep -qE '^\s*\[.*\]' "$script" 2>/dev/null && grep -q 'Usage:' "$script" 2>/dev/null; then
+                skipped=$((skipped + 1))
+                continue
+              fi
+              # Skip scripts that need gh CLI (not available in CI without auth)
+              if grep -q 'gh ' "$script" 2>/dev/null; then
+                skipped=$((skipped + 1))
+                continue
+              fi
+              # Skip scripts that need external tools not available in CI
+              if grep -qE 'docker|nmap|dig|openssl|jq' "$script" 2>/dev/null; then
+                skipped=$((skipped + 1))
+                continue
+              fi
+              tested=$((tested + 1))
               echo "Dry-run test: $script"
-              if ! timeout 10 bash "$script" --dry-run 2>/dev/null; then
-                # Some scripts don't support --dry-run flag, try without
-                if ! timeout 10 bash "$script" 2>/dev/null; then
-                  echo "FAILED: $script"
-                  failed=$((failed + 1))
-                fi
+              if ! timeout 10 bash "$script" 2>/dev/null; then
+                echo "FAILED: $script"
+                failed=$((failed + 1))
               fi
             fi
           done
+          echo "Tested: $tested, Skipped: $skipped, Failed: $failed"
           if [ "$failed" -gt 0 ]; then
             echo "$failed script(s) failed dry-run test"
             exit 1
