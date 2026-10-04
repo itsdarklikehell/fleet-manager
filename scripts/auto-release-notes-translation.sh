@@ -71,7 +71,7 @@ echo "Release notes vertalen..."
 
 for repo in $(gh repo list --limit 1000 --json nameWithOwner --jq '.[].nameWithOwner' 2>/dev/null); do
   # Haal laatste release op
-  local tag
+  tag
   tag=$(gh release list --repo "$repo" --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || echo "")
   
   if [ -n "$tag" ]; then

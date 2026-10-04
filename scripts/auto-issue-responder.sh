@@ -36,7 +36,7 @@ categorize_issue() {
   
   for pattern in "${!RESPONSE_PATTERNS[@]}"; do
     if echo "$combined_lower" | grep -qE "$pattern"; then
-      echo "$RESPONSE_PATTERNS[$pattern]"
+      echo "${RESPONSE_PATTERNS[$pattern]}"
       return
     fi
   done

@@ -65,9 +65,9 @@ mkdir -p "$HEALTH_STATE_DIR"
 for state_file in "$HEALTH_STATE_DIR"/*.fail; do
   [ -f "$state_file" ] || continue
   
-  local script_name
+  script_name
   script_name=$(basename "$state_file" .fail)
-  local failure_count
+  failure_count
   failure_count=$(check_recent_failures "$script_name")
   
   if [ "$failure_count" -ge "$FAILURE_THRESHOLD" ]; then

@@ -64,11 +64,11 @@ echo "Controleren op inactieve repos..."
 
 for repo in $(gh repo list --limit 1000 --json nameWithOwner --jq '.[].nameWithOwner' 2>/dev/null); do
   # Skip al gearchiveerde repos
-  local archived
+  archived
   archived=$(gh api "repos/$repo" --jq '.archived' 2>/dev/null || echo "false")
   [ "$archived" = "true" ] && continue
   
-  local days_inactive
+  days_inactive
   days_inactive=$(check_last_activity "$repo")
   
   if [ "$days_inactive" -ge "$ARCHIVE_DAYS" ]; then

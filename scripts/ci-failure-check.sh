@@ -5,11 +5,11 @@ source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 
 log "=== CI Failure Check ==="
-local failures=0
+failures=0
 for kr in "${KEY_REPOS[@]}"; do
-  local org="${kr%%/*}"
+  org="${kr%%/*}"
   set_repo_token "$org"
-  local failed_runs
+  failed_runs
   failed_runs=$(gh run list --repo "$kr" --limit 5 --json name,conclusion --jq '[.[] | select(.conclusion == "failure")] | length' 2>/dev/null || echo "0")
   if [ "$failed_runs" -gt 0 ]; then
     log "  ⚠️ $kr: $failed_runs failed run(s)"

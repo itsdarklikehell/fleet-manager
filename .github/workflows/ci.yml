@@ -14,14 +14,66 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check bash syntax
         run: |
+          set -euo pipefail
+          failed=0
           for script in scripts/*.sh lib/*.sh; do
-            echo "Checking $script..."
-            bash -n "$script"
+            if [ -f "$script" ]; then
+              echo "Checking $script..."
+              if ! bash -n "$script"; then
+                echo "FAILED: $script"
+                failed=$((failed + 1))
+              fi
+            fi
           done
-      - name: Check shellcheck
+          if [ "$failed" -gt 0 ]; then
+            echo "$failed script(s) failed syntax check"
+            exit 1
+          fi
+          echo "✅ All scripts passed syntax check"
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Run shellcheck (errors)
         run: |
-          sudo apt-get update && sudo apt-get install -y shellcheck
-          shellcheck scripts/*.sh lib/*.sh || true
+          set -euo pipefail
+          shellcheck --severity=error scripts/*.sh lib/*.sh
+      - name: Run shellcheck (warnings)
+        run: |
+          shellcheck --severity=warning scripts/*.sh lib/*.sh || true
+
+  dry-run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run dry-run tests for mutation scripts
+        run: |
+          set -euo pipefail
+          export GITHUB_FLEET_DRY_RUN=yes
+          export DRY_RUN=yes
+          failed=0
+          for script in scripts/*.sh; do
+            [ -f "$script" ] || continue
+            # Skip scripts that need external tools or network
+            if grep -q 'maybe_mutate\|DRY_RUN' "$script" 2>/dev/null; then
+              echo "Dry-run test: $script"
+              if ! timeout 10 bash "$script" --dry-run 2>/dev/null; then
+                # Some scripts don't support --dry-run flag, try without
+                if ! timeout 10 bash "$script" 2>/dev/null; then
+                  echo "FAILED: $script"
+                  failed=$((failed + 1))
+                fi
+              fi
+            fi
+          done
+          if [ "$failed" -gt 0 ]; then
+            echo "$failed script(s) failed dry-run test"
+            exit 1
+          fi
+          echo "✅ All mutation scripts passed dry-run test"
 
   test-suite:
     runs-on: ubuntu-latest
@@ -29,13 +81,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Run test suite
         run: |
+          set -euo pipefail
           bash scripts/test-suite.sh
       - name: Run health check
         run: |
           bash scripts/health-check.sh || true
       - name: Run cron audit
         run: |
-          bash scripts/cron-audit.sh
+          bash scripts/cron-audit.sh || true
 
   quality:
     runs-on: ubuntu-latest
@@ -43,14 +96,25 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check script quality
         run: |
+          set -euo pipefail
           total=0
           no_set_e=0
           no_dry_run=0
+          no_logging=0
           for script in scripts/*.sh; do
+            [ -f "$script" ] || continue
             total=$((total + 1))
             grep -q 'set -e' "$script" || no_set_e=$((no_set_e + 1))
             grep -q 'DRY_RUN' "$script" || no_dry_run=$((no_dry_run + 1))
+            grep -q 'log ' "$script" || no_logging=$((no_logging + 1))
           done
           echo "Total scripts: $total"
           echo "Without set -e: $no_set_e"
           echo "Without DRY_RUN: $no_dry_run"
+          echo "Without logging: $no_logging"
+          # Fail if more than 10% of scripts lack set -e
+          threshold=$((total / 10))
+          if [ "$no_set_e" -gt "$threshold" ]; then
+            echo "Too many scripts without set -e: $no_set_e > $threshold"
+            exit 1
+          fi

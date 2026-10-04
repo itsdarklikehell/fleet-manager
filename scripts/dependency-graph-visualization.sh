@@ -29,8 +29,7 @@ generate_mermaid_graph() {
   
   # Voeg nodes toe
   jq -r 'keys[]' "$graph_file" 2>/dev/null | while read -r repo; do
-    mermaid+="  $repo[$repo]
-"
+    mermaid+="  ${repo}[${repo}]"
   done
   
   # Voeg edges toe

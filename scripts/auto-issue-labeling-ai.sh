@@ -91,7 +91,7 @@ for repo in $(gh repo list --limit 1000 --json nameWithOwner --jq '.[].nameWithO
   
   for issue in $issues; do
     # Check of issue al labels heeft
-    local label_count
+    label_count
     label_count=$(gh issue view "$issue" --repo "$repo" --json labels --jq '.labels | length' 2>/dev/null || echo "0")
     
     if [ "$label_count" -eq 0 ]; then

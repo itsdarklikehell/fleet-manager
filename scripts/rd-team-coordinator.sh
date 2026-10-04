@@ -10,7 +10,7 @@ log "=== R&D Team Coordinator ==="
 
 # Fase 1: Identificeer repos die nog niet zijn aangepakt
 log "Fase 1: Repos identificeren..."
-local repos_to_process=()
+repos_to_process=()
 for repo_dir in "$REPOS_DIR"/*/; do
   [ -d "$repo_dir/.git" ] || continue
   repo=$(basename "$repo_dir")
@@ -27,18 +27,18 @@ log "Totaal repos te verwerken: ${#repos_to_process[@]}"
 
 # Fase 2: Verdeel repos over R&D teams (max 5 repos per team)
 log "Fase 2: R&D teams indelen..."
-local team_size=5
-local team_count=$(( (${#repos_to_process[@]} + team_size - 1) / team_size ))
+team_size=5
+team_count=$(( (${#repos_to_process[@]} + team_size - 1) / team_size ))
 log "  Teams nodig: $team_count"
 
 # Fase 3: Genereer team configuratie
 log "Fase 3: Team configuratie genereren..."
-local config_file="$HOME/.hermes/rd-team-config.json"
+config_file="$HOME/.hermes/rd-team-config.json"
 echo "{" > "$config_file"
 echo "  \"teams\": [" >> "$config_file"
 for ((i=0; i<team_count; i++)); do
-  local start=$((i * team_size))
-  local end=$((start + team_size - 1))
+  start=$((i * team_size))
+  end=$((start + team_size - 1))
   if [ $end -ge ${#repos_to_process[@]} ]; then
     end=$((${#repos_to_process[@]} - 1))
   fi
@@ -61,12 +61,12 @@ log "  Team configuratie opgeslagen in: $config_file"
 # Fase 4: Start R&D teams (via delegate_task)
 log "Fase 4: R&D teams starten..."
 for ((i=0; i<team_count; i++)); do
-  local start=$((i * team_size))
-  local end=$((start + team_size - 1))
+  start=$((i * team_size))
+  end=$((start + team_size - 1))
   if [ $end -ge ${#repos_to_process[@]} ]; then
     end=$((${#repos_to_process[@]} - 1))
   fi
-  local repos=""
+  repos=""
   for ((j=start; j<=end; j++)); do
     if [ -n "$repos" ]; then repos="$repos, "; fi
     repos="$repos${repos_to_process[$j]}"
