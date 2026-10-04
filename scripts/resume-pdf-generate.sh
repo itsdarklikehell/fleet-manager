@@ -33,10 +33,18 @@ done
 log "=== Resume PDF Generate ==="
 
 if [ -z "$CHROME" ]; then
+  if [ "$RPG_DRY_RUN" = "yes" ]; then
+    log "⚠️ geen Chrome/Chromium gevonden — overgeslagen (dry-run)"
+    exit 0
+  fi
   log "❌ geen Chrome/Chromium gevonden — PDF-generatie overgeslagen"
   exit 1
 fi
 if [ ! -f "$RPG_REPO_DIR/index.html" ]; then
+  if [ "$RPG_DRY_RUN" = "yes" ]; then
+    log "⚠️ index.html niet gevonden in $RPG_REPO_DIR — overgeslagen (dry-run)"
+    exit 0
+  fi
   log "❌ index.html niet gevonden in $RPG_REPO_DIR"
   exit 1
 fi

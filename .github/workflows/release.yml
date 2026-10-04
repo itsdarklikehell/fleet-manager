@@ -1,19 +1,20 @@
 name: Release
+
 on:
   push:
     branches: [main, master]
   workflow_dispatch:
+
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - name: Create Release
-        uses: actions/create-release@v1
-        with:
-          tag_name: v${{ github.run_number }}
-          release_name: Release v${{ github.run_number }}
-          draft: false
-          prerelease: false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ github.run_number }}"
+          gh release create "$tag" --title "Release $tag" --generate-notes

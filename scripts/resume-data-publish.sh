@@ -35,6 +35,10 @@ log "  doel:  $RDP_REPO_DIR"
 
 # --- Checks ---------------------------------------------------------------
 if [ ! -d "$RDP_SOURCE_DIR" ]; then
+  if [ "$RDP_DRY_RUN" = "yes" ]; then
+    log "⚠️ bron-map bestaat niet: $RDP_SOURCE_DIR — overgeslagen (dry-run)"
+    exit 0
+  fi
   log "❌ bron-map bestaat niet: $RDP_SOURCE_DIR"
   exit 1
 fi
