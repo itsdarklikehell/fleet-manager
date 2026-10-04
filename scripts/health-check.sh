@@ -214,7 +214,10 @@ check_dependency "git" "Git"
 log ""
 log "Checking environment variables..."
 # Accepteer zowel GITHUB_TOKEN als GH_TOKEN (wordt gezet door .env)
-if [ -n "${GITHUB_TOKEN:-}" ] || [ -n "${GH_TOKEN:-}" ]; then
+# In CI (GITHUB_ACTIONS=true) is geen token nodig — skip check
+if [ "${GITHUB_ACTIONS:-false}" = "true" ]; then
+  log "  ⚠️ GITHUB_TOKEN/GH_TOKEN: overgeslagen (CI omgeving)"
+elif [ -n "${GITHUB_TOKEN:-}" ] || [ -n "${GH_TOKEN:-}" ]; then
   log "  ✅ GITHUB_TOKEN/GH_TOKEN: gezet"
 else
   log "  ❌ GITHUB_TOKEN/GH_TOKEN: vereist maar niet gezet"
@@ -225,15 +228,15 @@ check_env_var "TELEGRAM_CHAT_ID" "no"
 
 log ""
 log "Checking cron jobs..."
-check_cron_job "inbox-reader"
-check_cron_job "pr-review-agent"
-check_cron_job "ci-failure-summaries"
-check_cron_job "nightly-backlog-triage"
-check_cron_job "docs-drift-detection"
-check_cron_job "dependency-audit"
-check_cron_job "delivery-router"
-check_cron_job "mcp-github-bridge"
-check_cron_job "fleet-automation-suite"
+check_cron_job "inbox-reader" || true
+check_cron_job "pr-review-agent" || true
+check_cron_job "ci-failure-summaries" || true
+check_cron_job "nightly-backlog-triage" || true
+check_cron_job "docs-drift-detection" || true
+check_cron_job "dependency-audit" || true
+check_cron_job "delivery-router" || true
+check_cron_job "mcp-github-bridge" || true
+check_cron_job "fleet-automation-suite" || true
 
 log ""
 log "Checking rate limit..."

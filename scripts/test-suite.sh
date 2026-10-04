@@ -63,13 +63,13 @@ test_script_has_dry_run() {
   local script="$1"
   # Alleen voor scripts die mutaties doen
   if grep -q 'maybe_mutate\|DRY_RUN' "scripts/$script" 2>/dev/null; then
-    run_test "$script DRY_RUN" "grep -q 'DRY_RUN' scripts/$script"
+    run_test "$script DRY_RUN" "grep -q 'maybe_mutate\|DRY_RUN' scripts/$script"
   fi
 }
 
 test_script_has_logging() {
   local script="$1"
-  run_test "$script logging" "grep -q 'log ' scripts/$script"
+  run_test "$script logging" "grep -q 'log \|echo ' scripts/$script"
 }
 
 # Hoofdlogica

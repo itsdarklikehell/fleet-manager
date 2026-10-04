@@ -7,29 +7,60 @@ on:
     branches: ["main", "master"]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   bash-syntax:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        script-group: [scripts, lib, root]
     steps:
       - uses: actions/checkout@v4
-      - name: Check bash syntax
+      - name: Check bash syntax (${{ matrix.script-group }})
         run: |
           set -euo pipefail
           failed=0
-          for script in scripts/*.sh lib/*.sh github_fleet_manager.sh; do
-            if [ -f "$script" ]; then
-              echo "Checking $script..."
-              if ! bash -n "$script"; then
-                echo "FAILED: $script"
-                failed=$((failed + 1))
-              fi
-            fi
-          done
+          case "${{ matrix.script-group }}" in
+            scripts)
+              for script in scripts/*.sh; do
+                [ -f "$script" ] || continue
+                echo "Checking $script..."
+                if ! bash -n "$script"; then
+                  echo "FAILED: $script"
+                  failed=$((failed + 1))
+                fi
+              done
+              ;;
+            lib)
+              for script in lib/*.sh; do
+                [ -f "$script" ] || continue
+                echo "Checking $script..."
+                if ! bash -n "$script"; then
+                  echo "FAILED: $script"
+                  failed=$((failed + 1))
+                fi
+              done
+              ;;
+            root)
+              for script in github_fleet_manager.sh; do
+                [ -f "$script" ] || continue
+                echo "Checking $script..."
+                if ! bash -n "$script"; then
+                  echo "FAILED: $script"
+                  failed=$((failed + 1))
+                fi
+              done
+              ;;
+          esac
           if [ "$failed" -gt 0 ]; then
             echo "$failed script(s) failed syntax check"
             exit 1
           fi
-          echo "✅ All scripts passed syntax check"
+          echo "✅ All ${{ matrix.script-group }} scripts passed syntax check"
 
   shellcheck:
     runs-on: ubuntu-latest
@@ -41,24 +72,29 @@ jobs:
         run: |
           set -euo pipefail
           shellcheck --severity=error scripts/*.sh lib/*.sh github_fleet_manager.sh
-      - name: Run shellcheck (warnings)
+      - name: Run shellcheck (warnings, non-blocking)
         run: |
-          set -euo pipefail
+          set -uo pipefail
           shellcheck --severity=warning scripts/*.sh lib/*.sh github_fleet_manager.sh || true
 
   dry-run-tests:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        script-group: [scripts, lib]
     steps:
       - uses: actions/checkout@v4
-      - name: Run dry-run tests for mutation scripts
+      - name: Run dry-run tests (${{ matrix.script-group }})
         run: |
           set -euo pipefail
           export GITHUB_FLEET_DRY_RUN=yes
           export DRY_RUN=yes
+          export SUITE_DRY_RUN=yes
           failed=0
           tested=0
           skipped=0
-          for script in scripts/*.sh; do
+          for script in ${{ matrix.script-group }}/*.sh; do
             [ -f "$script" ] || continue
             # Only test scripts that have DRY_RUN support
             if grep -q 'maybe_mutate\|DRY_RUN' "$script" 2>/dev/null; then
@@ -90,7 +126,7 @@ jobs:
             echo "$failed script(s) failed dry-run test"
             exit 1
           fi
-          echo "✅ All mutation scripts passed dry-run test"
+          echo "✅ All ${{ matrix.script-group }} mutation scripts passed dry-run test"
 
   test-suite:
     runs-on: ubuntu-latest
@@ -135,3 +171,4 @@ jobs:
             echo "Too many scripts without set -e: $no_set_e > $threshold"
             exit 1
           fi
+          echo "✅ Quality check passed"
