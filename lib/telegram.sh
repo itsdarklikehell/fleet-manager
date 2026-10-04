@@ -43,7 +43,7 @@ send_telegram_message() {
   [ -z "$token" ] && { echo "[TELEGRAM] No token — skipping" >&2; return 1; }
   
   local escaped
-  escaped=$(printf '%b' "$text" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" 2>/dev/null || echo "\"$text\"")
+  escaped=$(printf '%b' "$text" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read(), ensure_ascii=False))" 2>/dev/null || echo "\"$text\"")
   
   local all_ok=1
   for chat_id in $TELEGRAM_CHAT_IDS; do
@@ -55,6 +55,13 @@ send_telegram_message() {
     # Retry logic
     local attempt=0
     local success=false
+    local parse_mode="Markdown"
+    # Als de tekst emoji's bevat, schakel parse_mode uit (Telegram Markdown parser faalt op emoji's)
+    if printf '%b' "$text" | python3 -c "import sys; sys.exit(0 if any(ord(c) > 0xFFFF for c in sys.stdin.read()) else 1)" 2>/dev/null; then
+      parse_mode=""
+    fi
+    local parse_mode_arg=""
+    [ -n "$parse_mode" ] && parse_mode_arg=",\"parse_mode\":\"$parse_mode\""
     while [ $attempt -lt $TELEGRAM_RETRY_COUNT ]; do
       attempt=$((attempt + 1))
       
@@ -62,7 +69,7 @@ send_telegram_message() {
       http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
         "https://api.telegram.org/bot${token}/sendMessage" \
         -H "Content-Type: application/json" \
-        -d "{\"chat_id\":\"${chat_id}\",\"text\":${escaped},\"parse_mode\":\"Markdown\",\"disable_web_page_preview\":true}" 2>/dev/null)
+        -d "{\"chat_id\":\"${chat_id}\",\"text\":${escaped}${parse_mode_arg},\"disable_web_page_preview\":true}" 2>/dev/null)
       
       if [ "$http_code" = "200" ]; then
         echo "[TELEGRAM] ✓ Verstuurd naar chat $chat_id"
