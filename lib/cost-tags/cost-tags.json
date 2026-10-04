@@ -1,0 +1,29 @@
+{
+  "cost_allocation": {
+    "enabled": true,
+    "tags": {
+      "project": {
+        "name": "project",
+        "values": ["fleet-manager", "pwnagotchi", "retropie", "hermes", "other"]
+      },
+      "environment": {
+        "name": "environment",
+        "values": ["production", "staging", "development"]
+      },
+      "team": {
+        "name": "team",
+        "values": ["devops", "security", "ai", "web"]
+      },
+      "cost_center": {
+        "name": "cost_center",
+        "values": ["engineering", "infrastructure", "research"]
+      }
+    },
+    "default_tags": {
+      "project": "fleet-manager",
+      "environment": "production",
+      "team": "devops",
+      "cost_center": "engineering"
+    }
+  }
+}

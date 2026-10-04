@@ -1,0 +1,30 @@
+{
+  "regions": {
+    "eu-west": {
+      "name": "EU West",
+      "location": "Ireland",
+      "endpoint": "https://api.github.com",
+      "priority": 1,
+      "enabled": true
+    },
+    "us-east": {
+      "name": "US East",
+      "location": "Virginia",
+      "endpoint": "https://api.github.com",
+      "priority": 2,
+      "enabled": false
+    },
+    "ap-southeast": {
+      "name": "AP Southeast",
+      "location": "Singapore",
+      "endpoint": "https://api.github.com",
+      "priority": 3,
+      "enabled": false
+    }
+  },
+  "failover": {
+    "enabled": true,
+    "health_check_interval": 60,
+    "failover_threshold": 3
+  }
+}

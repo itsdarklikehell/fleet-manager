@@ -1,0 +1,29 @@
+{
+  "self_healing": {
+    "enabled": true,
+    "max_retries": 3,
+    "retry_delay_seconds": 60,
+    "strategies": {
+      "script_failure": {
+        "enabled": true,
+        "action": "restart",
+        "max_attempts": 3
+      },
+      "api_rate_limit": {
+        "enabled": true,
+        "action": "wait",
+        "wait_time_seconds": 300
+      },
+      "disk_full": {
+        "enabled": true,
+        "action": "cleanup",
+        "target_usage_percent": 80
+      },
+      "memory_high": {
+        "enabled": true,
+        "action": "restart_service",
+        "threshold_percent": 90
+      }
+    }
+  }
+}

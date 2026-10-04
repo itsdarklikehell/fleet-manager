@@ -1,0 +1,44 @@
+{
+  "flags": {
+    "ai_pr_review": {
+      "enabled": false,
+      "rollout_percentage": 0,
+      "description": "AI-powered PR reviews"
+    },
+    "ai_issue_triage": {
+      "enabled": false,
+      "rollout_percentage": 0,
+      "description": "AI-powered issue triage"
+    },
+    "auto_merge": {
+      "enabled": true,
+      "rollout_percentage": 100,
+      "description": "Automatische PR merge"
+    },
+    "webhook_server": {
+      "enabled": false,
+      "rollout_percentage": 0,
+      "description": "Real-time webhook server"
+    },
+    "prometheus_metrics": {
+      "enabled": true,
+      "rollout_percentage": 100,
+      "description": "Prometheus metrics endpoint"
+    },
+    "grafana_dashboard": {
+      "enabled": false,
+      "rollout_percentage": 0,
+      "description": "Grafana dashboard"
+    },
+    "opentelemetry": {
+      "enabled": false,
+      "rollout_percentage": 0,
+      "description": "OpenTelemetry tracing"
+    },
+    "vault_secrets": {
+      "enabled": false,
+      "rollout_percentage": 0,
+      "description": "HashiCorp Vault secret management"
+    }
+  }
+}

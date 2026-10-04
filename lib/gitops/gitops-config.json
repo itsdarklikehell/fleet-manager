@@ -1,0 +1,26 @@
+{
+  "gitops": {
+    "provider": "flux",
+    "repository": "itsdarklikehell/fleet-manager",
+    "branch": "main",
+    "path": "./k8s",
+    "sync_interval": "5m",
+    "auto_sync": true,
+    "prune": true,
+    "self_heal": true
+  },
+  "environments": {
+    "development": {
+      "branch": "develop",
+      "auto_sync": false
+    },
+    "staging": {
+      "branch": "staging",
+      "auto_sync": true
+    },
+    "production": {
+      "branch": "main",
+      "auto_sync": true
+    }
+  }
+}

@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  fleet-manager:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: fleet-manager
+    volumes:
+      - ../scripts:/app/scripts
+      - ../lib:/app/lib
+      - ../.github:/app/.github
+      - fleet-data:/app/data
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: fleet-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: fleet-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../lib/grafana/dashboards:/etc/grafana/dashboards
+      - ../lib/grafana/datasources:/etc/grafana/datasources
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    restart: unless-stopped
+
+volumes:
+  fleet-data:

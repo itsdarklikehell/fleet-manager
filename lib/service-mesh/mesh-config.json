@@ -1,0 +1,34 @@
+{
+  "service_mesh": {
+    "provider": "istio",
+    "enabled": false,
+    "namespace": "fleet-system",
+    "services": [
+      {
+        "name": "fleet-manager",
+        "port": 8080,
+        "protocol": "http"
+      },
+      {
+        "name": "prometheus",
+        "port": 9090,
+        "protocol": "http"
+      },
+      {
+        "name": "grafana",
+        "port": 3000,
+        "protocol": "http"
+      }
+    ],
+    "traffic_policy": {
+      "mtls": true,
+      "circuit_breaker": true,
+      "retry_policy": true
+    },
+    "observability": {
+      "metrics": true,
+      "tracing": true,
+      "access_logs": true
+    }
+  }
+}

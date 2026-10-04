@@ -1,0 +1,30 @@
+{
+  "experiments": {
+    "script_failure": {
+      "enabled": false,
+      "description": "Random script failures simuleren",
+      "frequency": "weekly",
+      "target_scripts": ["status", "health-check"],
+      "failure_rate": 0.1
+    },
+    "network_latency": {
+      "enabled": false,
+      "description": "Network latency simuleren",
+      "frequency": "monthly",
+      "latency_ms": 500,
+      "jitter_ms": 100
+    },
+    "api_rate_limit": {
+      "enabled": false,
+      "description": "API rate limit bereiken",
+      "frequency": "monthly",
+      "target_remaining": 10
+    },
+    "disk_full": {
+      "enabled": false,
+      "description": "Disk vol simuleren",
+      "frequency": "quarterly",
+      "target_usage_percent": 95
+    }
+  }
+}

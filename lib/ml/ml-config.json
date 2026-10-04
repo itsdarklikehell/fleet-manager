@@ -1,0 +1,21 @@
+{
+  "anomaly_detection": {
+    "enabled": false,
+    "model": "isolation_forest",
+    "features": [
+      "script_duration",
+      "api_calls_per_minute",
+      "error_rate",
+      "memory_usage",
+      "cpu_usage"
+    ],
+    "threshold": 0.95,
+    "training_window_days": 30,
+    "retrain_interval_days": 7
+  },
+  "alerts": {
+    "enabled": true,
+    "channels": ["telegram"],
+    "min_confidence": 0.8
+  }
+}

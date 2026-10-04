@@ -1,0 +1,25 @@
+{
+  "backup": {
+    "enabled": true,
+    "schedule": "0 2 * * *",
+    "retention_days": 30,
+    "targets": [
+      "scripts",
+      "lib",
+      ".github",
+      "tests"
+    ],
+    "storage": {
+      "type": "local",
+      "path": "/home/hans/.github_fleet_backups"
+    },
+    "encryption": {
+      "enabled": false,
+      "key_file": ""
+    }
+  },
+  "restore": {
+    "test_schedule": "0 3 1 * *",
+    "last_test": null
+  }
+}
