@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/ai-issue-triage.sh - Automatische issue triage met AI
 # Integreert met AI models voor betere triage
 set -euo pipefail

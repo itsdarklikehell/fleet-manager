@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/smart-notification-digest.sh - Slimme notificatie digest
 # Alleen nieuwe issues/PRs, geen duplicates
 set -euo pipefail

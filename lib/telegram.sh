@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # lib/telegram.sh - Telegram rapportage voor GitHub Fleet Manager
 # Uitgebreid met retry logic, rate limiting en betere error handling
 
+set -euo pipefail
 TELEGRAM_RATE_LIMIT_FILE="${TELEGRAM_RATE_LIMIT_FILE:-$HOME/.github_fleet_telegram_rate}"
 TELEGRAM_MAX_PER_MINUTE="${TELEGRAM_MAX_PER_MINUTE:-20}"
 TELEGRAM_RETRY_COUNT="${TELEGRAM_RETRY_COUNT:-3}"

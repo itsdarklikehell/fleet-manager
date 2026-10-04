@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/ai-pr-review.sh - Automatische PR review met AI
 # Integreert met AI models voor betere reviews
 set -euo pipefail

@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/auto-merge-with-ai-review.sh - Automatische PR merge met AI review
 # Als AI review een PR goedkeurt, automatisch mergen
 set -euo pipefail
+
+# DRY_RUN mode
+DRY_RUN="${DRY_RUN:-}"
+maybe_mutate() {
+  if [ -n "$DRY_RUN" ]; then
+    echo "[DRY-RUN] Would: $*"
+    return 0
+  fi
+  "$@"
+}
 
 source ~/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"

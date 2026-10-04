@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/auto-release-asset-uploads.sh - Automatische release asset uploads
 # Bij releases automatisch assets uploaden
 set -euo pipefail

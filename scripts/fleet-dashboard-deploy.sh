@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/fleet-dashboard-deploy.sh - Fleet dashboard deployen als service
 set -euo pipefail
 

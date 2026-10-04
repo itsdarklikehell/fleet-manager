@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # lib/config.sh - Configuratie voor GitHub Fleet Manager
 
+set -euo pipefail
 REPOS_DIR="${REPOS_DIR:-$HOME/.openclaw/workspace/projects}"
 LOG_FILE="${LOG_FILE:-$HOME/.github_fleet_manager.log}"
 PARALLEL_JOBS="${PARALLEL_JOBS:-8}"

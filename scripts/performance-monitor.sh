@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/performance-monitor.sh - Performance monitor
 # Bijhouden hoe lang elke script duurt en traagste scripts identificeren
 set -euo pipefail

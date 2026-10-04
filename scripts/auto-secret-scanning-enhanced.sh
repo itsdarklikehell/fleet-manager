@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/auto-secret-scanning-enhanced.sh - Uitgebreide secret scanning
 # Meer patterns en betere detectie
 set -euo pipefail

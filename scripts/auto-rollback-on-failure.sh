@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/auto-rollback-on-failure.sh - Automatische rollback bij failures
 # Monitor scripts en roept rollback aan bij falen
 set -euo pipefail

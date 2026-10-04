@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/auto-repo-archiving.sh - Automatische repo archiving
 # Repos die >6 maanden niet actief zijn automatisch archiveren
 set -euo pipefail

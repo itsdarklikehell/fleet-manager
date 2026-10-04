@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/auto-pr-size-labeling.sh - Automatische PR size labeling
 # PRs labelen op grootte (XS, S, M, L, XL)
 set -euo pipefail
+
+# DRY_RUN mode
+DRY_RUN="${DRY_RUN:-}"
+maybe_mutate() {
+  if [ -n "$DRY_RUN" ]; then
+    echo "[DRY-RUN] Would: $*"
+    return 0
+  fi
+  "$@"
+}
 
 source ~/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"

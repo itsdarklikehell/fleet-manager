@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/dependency-graph-visualization.sh - Cross-repo dependency visualisatie
 # Genereert een Mermaid grafiek van dependencies tussen repos
 set -euo pipefail

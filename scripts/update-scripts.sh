@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
+
+# Logging
+LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
 # scripts/update-scripts.sh - Automatische dependency updates voor scripts
 # Controleert op nieuwe gh CLI features en update verouderde API endpoints
 set -euo pipefail
+
+# DRY_RUN mode
+DRY_RUN="${DRY_RUN:-}"
+maybe_mutate() {
+  if [ -n "$DRY_RUN" ]; then
+    echo "[DRY-RUN] Would: $*"
+    return 0
+  fi
+  "$@"
+}
 
 source ~/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
