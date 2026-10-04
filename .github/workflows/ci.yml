@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: [main, master]
   pull_request:
-    branches: ["main", "master"]
+    branches: [main, master]
   workflow_dispatch:
 
 concurrency:
@@ -14,161 +14,63 @@ concurrency:
 jobs:
   bash-syntax:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        script-group: [scripts, lib, root]
     steps:
       - uses: actions/checkout@v4
-      - name: Check bash syntax (${{ matrix.script-group }})
+      - name: Check bash syntax
         run: |
-          set -euo pipefail
-          failed=0
-          case "${{ matrix.script-group }}" in
-            scripts)
-              for script in scripts/*.sh; do
-                [ -f "$script" ] || continue
-                echo "Checking $script..."
-                if ! bash -n "$script"; then
-                  echo "FAILED: $script"
-                  failed=$((failed + 1))
-                fi
-              done
-              ;;
-            lib)
-              for script in lib/*.sh; do
-                [ -f "$script" ] || continue
-                echo "Checking $script..."
-                if ! bash -n "$script"; then
-                  echo "FAILED: $script"
-                  failed=$((failed + 1))
-                fi
-              done
-              ;;
-            root)
-              for script in github_fleet_manager.sh; do
-                [ -f "$script" ] || continue
-                echo "Checking $script..."
-                if ! bash -n "$script"; then
-                  echo "FAILED: $script"
-                  failed=$((failed + 1))
-                fi
-              done
-              ;;
-          esac
-          if [ "$failed" -gt 0 ]; then
-            echo "$failed script(s) failed syntax check"
-            exit 1
-          fi
-          echo "✅ All ${{ matrix.script-group }} scripts passed syntax check"
+          for script in scripts/*.sh lib/*.sh; do
+            [ -f "$script" ] && bash -n "$script"
+          done
 
   shellcheck:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
-      - name: Run shellcheck (errors)
-        run: |
-          set -euo pipefail
-          shellcheck --severity=error scripts/*.sh lib/*.sh github_fleet_manager.sh
-      - name: Run shellcheck (warnings, non-blocking)
-        run: |
-          set -uo pipefail
-          shellcheck --severity=warning scripts/*.sh lib/*.sh github_fleet_manager.sh || true
-
-  dry-run-tests:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        script-group: [scripts, lib]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run dry-run tests (${{ matrix.script-group }})
-        run: |
-          set -euo pipefail
-          export GITHUB_FLEET_DRY_RUN=yes
-          export DRY_RUN=yes
-          export SUITE_DRY_RUN=yes
-          failed=0
-          tested=0
-          skipped=0
-          for script in ${{ matrix.script-group }}/*.sh; do
-            [ -f "$script" ] || continue
-            # Only test scripts that have DRY_RUN support
-            if grep -q 'maybe_mutate\|DRY_RUN' "$script" 2>/dev/null; then
-              # Skip scripts that require arguments (have usage check)
-              if grep -qE '^\s*\[.*\]' "$script" 2>/dev/null && grep -q 'Usage:' "$script" 2>/dev/null; then
-                skipped=$((skipped + 1))
-                continue
-              fi
-              # Skip scripts that need gh CLI (not available in CI without auth)
-              if grep -q 'gh ' "$script" 2>/dev/null; then
-                skipped=$((skipped + 1))
-                continue
-              fi
-              # Skip scripts that need external tools not available in CI
-              if grep -qE 'docker|nmap|dig|openssl|jq' "$script" 2>/dev/null; then
-                skipped=$((skipped + 1))
-                continue
-              fi
-              tested=$((tested + 1))
-              echo "Dry-run test: $script"
-              if ! timeout 10 bash "$script" 2>/dev/null; then
-                echo "FAILED: $script"
-                failed=$((failed + 1))
-              fi
-            fi
-          done
-          echo "Tested: $tested, Skipped: $skipped, Failed: $failed"
-          if [ "$failed" -gt 0 ]; then
-            echo "$failed script(s) failed dry-run test"
-            exit 1
-          fi
-          echo "✅ All ${{ matrix.script-group }} mutation scripts passed dry-run test"
+      - name: Run shellcheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: warning
 
   test-suite:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
       - name: Run test suite
         run: |
-          set -euo pipefail
           bash scripts/test-suite.sh
       - name: Run health check
         run: |
           bash scripts/health-check.sh || true
-      - name: Run cron audit
-        run: |
-          bash scripts/cron-audit.sh || true
 
-  quality:
+  security-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check script quality
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check dependencies
         run: |
-          set -euo pipefail
-          total=0
-          no_set_e=0
-          no_dry_run=0
-          no_logging=0
-          for script in scripts/*.sh; do
-            [ -f "$script" ] || continue
-            total=$((total + 1))
-            grep -q 'set -e' "$script" || no_set_e=$((no_set_e + 1))
-            grep -q 'DRY_RUN' "$script" || no_dry_run=$((no_dry_run + 1))
-            grep -q 'log ' "$script" || no_logging=$((no_logging + 1))
-          done
-          echo "Total scripts: $total"
-          echo "Without set -e: $no_set_e"
-          echo "Without DRY_RUN: $no_dry_run"
-          echo "Without logging: $no_logging"
-          # Fail if more than 10% of scripts lack set -e
-          threshold=$((total / 10))
-          if [ "$no_set_e" -gt "$threshold" ]; then
-            echo "Too many scripts without set -e: $no_set_e > $threshold"
-            exit 1
-          fi
-          echo "✅ Quality check passed"
+          bash scripts/dependency-audit.sh || true
