@@ -6,6 +6,21 @@ set -euo pipefail
 source ~/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 
+# Parallelisatie config
+MAX_PARALLEL="${MAX_PARALLEL:-4}"
+
+# Helper: wacht tot er ruimte is voor nieuwe job
+wait_for_slot() {
+  while [ "$(jobs -rp 2>/dev/null | wc -l)" -ge "$MAX_PARALLEL" ]; do
+    sleep 0.1
+  done
+}
+
+# Helper: wacht op alle jobs
+wait_all_jobs() {
+  wait
+}
+
 echo "=== Performance Optimalisatie ==="
 
 # Configuratie
@@ -29,9 +44,7 @@ run_parallel() {
   local pids=()
   
   for item in "${items[@]}"; do
-    while [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; do
-      sleep 0.1
-    done
+    while [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; do    done
     "$func" "$item" &
     pids+=($!)
   done
@@ -49,9 +62,7 @@ run_parallel_with_timeout() {
   local pids=()
   
   for item in "${items[@]}"; do
-    while [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; do
-      sleep 0.1
-    done
+    while [ "$(jobs -rp | wc -l)" -ge "$MAX_JOBS" ]; do    done
     (
       timeout "$timeout" "$func" "$item"
     ) &

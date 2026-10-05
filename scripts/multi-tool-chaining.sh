@@ -6,6 +6,101 @@ set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 
+# Caching (5 min TTL)
+CACHE_DIR="${CACHE_DIR:-/tmp/github_fleet_cache}"
+CACHE_TTL="${CACHE_TTL:-300}"
+mkdir -p "$CACHE_DIR"
+
+cache_get() {
+  local key="$1"
+  local cache_file="$CACHE_DIR/${key//\//_}"
+  if [ -f "$cache_file" ]; then
+    local age
+    age=$(($(date +%s) - $(stat -c %Y "$cache_file" 2>/dev/null || echo 0)))
+    if [ "$age" -lt "$CACHE_TTL" ]; then
+      cat "$cache_file"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+cache_set() {
+  local key="$1"
+  local value="$2"
+  local cache_file="$CACHE_DIR/${key//\//_}"
+  echo "$value" > "$cache_file"
+}
+
+# Progress tracking
+PROGRESS_TOTAL=0
+PROGRESS_CURRENT=0
+
+progress_start() {
+  PROGRESS_TOTAL=$1
+  PROGRESS_CURRENT=0
+  log "  Start: $PROGRESS_TOTAL items te verwerken"
+}
+
+progress_update() {
+  PROGRESS_CURRENT=$((PROGRESS_CURRENT + 1))
+  if [ $((PROGRESS_CURRENT % 10)) -eq 0 ] || [ "$PROGRESS_CURRENT" -eq "$PROGRESS_TOTAL" ]; then
+    log "  Voortgang: $PROGRESS_CURRENT/$PROGRESS_TOTAL"
+  fi
+}
+
+# Rate limiting (30 req/min voor GitHub API)
+RATE_LIMIT_FILE="${RATE_LIMIT_FILE:-$HOME/.github_fleet_rate_limit}"
+RATE_LIMIT_MAX="${RATE_LIMIT_MAX:-30}"
+RATE_LIMIT_WINDOW="${RATE_LIMIT_WINDOW:-60}"
+
+rate_limit_check() {
+  local now
+  now=$(date +%s)
+  local window_start=$((now - RATE_LIMIT_WINDOW))
+  
+  local count=0
+  local file_time=0
+  if [ -f "$RATE_LIMIT_FILE" ]; then
+    read -r file_time count < "$RATE_LIMIT_FILE" 2>/dev/null || true
+    if [ -z "$file_time" ] || [ "$file_time" -lt "$window_start" ]; then
+      count=0
+    fi
+  fi
+  
+  count=$((count + 1))
+  echo "$now $count" > "$RATE_LIMIT_FILE"
+  
+  if [ "$count" -ge "$RATE_LIMIT_MAX" ]; then
+    log "  Rate limit bereikt ($count requests in laatste ${RATE_LIMIT_WINDOW}s), wacht..."
+    sleep "$RATE_LIMIT_WINDOW"
+    echo "$((now + RATE_LIMIT_WINDOW)) 0" > "$RATE_LIMIT_FILE"
+    return 1
+  fi
+  return 0
+}
+
+# Wrapper voor timeout 15 gh api met rate limiting
+gh_api_rate_limited() {
+  rate_limit_check || true
+  timeout 15 gh api "$@"
+}
+
+# Parallelisatie config
+MAX_PARALLEL="${MAX_PARALLEL:-4}"
+
+# Helper: wacht tot er ruimte is voor nieuwe job
+wait_for_slot() {
+  while [ "$(jobs -rp 2>/dev/null | wc -l)" -ge "$MAX_PARALLEL" ]; do
+    sleep 0.1
+  done
+}
+
+# Helper: wacht op alle jobs
+wait_all_jobs() {
+  wait
+}
+
 log "=== Multi-Tool Chaining ==="
 
 # Configuratie
@@ -42,7 +137,7 @@ chain_search_and_read() {
   fi
   
   # Lees file inhoud
-  gh api "repos/$repo/contents/$first_file" --jq '.content' 2>/dev/null | base64 -d 2>/dev/null | head -50
+  timeout 15 gh api "repos/$repo/contents/$first_file" --jq '.content' 2>/dev/null | base64 -d 2>/dev/null | head -50
 }
 
 chain_issue_with_code() {

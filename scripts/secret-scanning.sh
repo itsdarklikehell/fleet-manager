@@ -5,6 +5,32 @@ set -euo pipefail
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 
+# Cleanup temp files
+TEMP_FILES=()
+cleanup_temp() {
+  for f in "${TEMP_FILES[@]}"; do
+    [ -f "$f" ] && rm -f "$f"
+  done
+}
+trap cleanup_temp EXIT
+
+# Progress tracking
+PROGRESS_TOTAL=0
+PROGRESS_CURRENT=0
+
+progress_start() {
+  PROGRESS_TOTAL=$1
+  PROGRESS_CURRENT=0
+  log "  Start: $PROGRESS_TOTAL items te verwerken"
+}
+
+progress_update() {
+  PROGRESS_CURRENT=$((PROGRESS_CURRENT + 1))
+  if [ $((PROGRESS_CURRENT % 10)) -eq 0 ] || [ "$PROGRESS_CURRENT" -eq "$PROGRESS_TOTAL" ]; then
+    log "  Voortgang: $PROGRESS_CURRENT/$PROGRESS_TOTAL"
+  fi
+}
+
 log "=== Secret Scanning ==="
 
 # Configuratie
@@ -33,9 +59,7 @@ scan_for_secrets() {
       clone_ok=true
       break
     fi
-    log "  ⚠️ Clone poging $attempt gefaald, opnieuw proberen..."
-    sleep 2
-  done
+    log "  ⚠️ Clone poging $attempt gefaald, opnieuw proberen..."  done
   
   if [ "$clone_ok" != true ]; then
     log "  ❌ Kon repo niet clonen na 3 pogingen"

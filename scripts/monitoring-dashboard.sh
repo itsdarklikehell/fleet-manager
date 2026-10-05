@@ -46,9 +46,19 @@ Volledig rapport: $REPORT_FILE" || log "  ⚠️ Telegram rapport verzenden gefa
 check_critical_conditions() {
   local alerts=""
   
-  # Check 1: GitHub API rate limit
+  # Check 1: GitHub API rate limit (cache voor 5 minuten)
   local remaining
-  remaining=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown")
+  local rate_cache="$MONITORING_DIR/.rate_limit_cache"
+  local rate_cache_age=0
+  if [ -f "$rate_cache" ]; then
+    rate_cache_age=$(( $(date +%s) - $(stat -c %Y "$rate_cache" 2>/dev/null || echo 0) ))
+  fi
+  if [ "$rate_cache_age" -lt 300 ] && [ -f "$rate_cache" ]; then
+    remaining=$(cat "$rate_cache" 2>/dev/null || echo "unknown")
+  else
+    remaining=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown")
+    echo "$remaining" > "$rate_cache" 2>/dev/null || true
+  fi
   if [ "$remaining" != "unknown" ] && [ "$remaining" -lt 100 ]; then
     alerts+="❌ GitHub API rate limit kritiek: $remaining remaining\n"
   fi
@@ -131,11 +141,16 @@ generate_report() {
   cron_count=$(crontab -l 2>/dev/null | grep -c 'github_fleet' || echo "0")
   report+="- Actieve cron jobs: $cron_count\n\n"
   
-  # Sectie 3: GitHub API
+  # Sectie 3: GitHub API (gebruik cache indien beschikbaar)
   report+="## GitHub API\n\n"
   local rate_limit
-  rate_limit=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown")
   local rate_limit_max
+  local rate_cache="$MONITORING_DIR/.rate_limit_cache"
+  if [ -f "$rate_cache" ]; then
+    rate_limit=$(cat "$rate_cache" 2>/dev/null || echo "unknown")
+  else
+    rate_limit=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown")
+  fi
   rate_limit_max=$(gh api rate_limit --jq '.resources.core.limit' 2>/dev/null || echo "unknown")
   report+="- Rate limit: $rate_limit/$rate_limit_max\n"
   

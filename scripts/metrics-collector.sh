@@ -1,154 +1,138 @@
 #!/usr/bin/env bash
-# scripts/metrics-collector.sh - Verzamelt metrics over de fleet health
-# Telt open issues, PRs, CI failures per repo en houdt API usage bij
+# scripts/metrics-collector.sh - Fleet health metrics (GEOPTIMALISEERD)
+# OPTIMISATIES: parallelisatie, rate limiting, KEY_REPOS only, timeout per call
+
 set -euo pipefail
 
-source ~/.hermes/.env 2>/dev/null || true
+DRY_RUN="${GITHUB_FLEET_DRY_RUN:-}"
+source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 
-log "=== Metrics Collector ==="
+log "=== Metrics Collector (geoptimaliseerd) ==="
 
-# Configuratie
-METRICS_DIR="${METRICS_DIR:-$HOME/.github_fleet_metrics}"
-mkdir -p "$METRICS_DIR"
-METRICS_FILE="$METRICS_DIR/metrics_$(date +%Y%m%d).json"
+MAX_PARALLEL="${MAX_PARALLEL:-4}"
+METRICS_FILE="${METRICS_FILE:-/tmp/fleet_metrics.json}"
+GH_TIMEOUT="${GH_TIMEOUT:-10}"
 
-# Functies
+# Rate limiter
+RATE_LIMIT_FILE="${RATE_LIMIT_FILE:-/tmp/github_fleet_metrics_rate_limit}"
+rate_limit_check() {
+  local now
+  now=$(date +%s)
+  local window_start=$((now - 60))
+  local count=0
+  local file_time=0
+  if [ -f "$RATE_LIMIT_FILE" ]; then
+    read -r file_time count < "$RATE_LIMIT_FILE" 2>/dev/null || true
+    if [ -z "$file_time" ] || [ "$file_time" -lt "$window_start" ]; then
+      count=0
+    fi
+  fi
+  count=$((count + 1))
+  echo "$now $count" > "$RATE_LIMIT_FILE"
+  if [ "$count" -ge 30 ]; then
+    log "  Rate limit bereikt, wacht 60s..."
+    sleep 60
+    echo "$now 0" > "$RATE_LIMIT_FILE"
+  fi
+}
+
+# Parallelle metrics collectie (alleen KEY_REPOS)
 collect_repo_metrics() {
   local repo="$1"
-  local metrics=""
   
-  # Open issues
-  local open_issues
-  open_issues=$(gh api "repos/$repo/issues?state=open&per_page=1" -i 2>/dev/null | grep -i '^link:' | sed -n 's/.*page=\([0-9]*\)>; rel="last".*/\1/p' || echo "0")
-  [ -z "$open_issues" ] && open_issues=0
+  rate_limit_check
   
-  # Open PRs
-  local open_prs
-  open_prs=$(gh api "repos/$repo/pulls?state=open&per_page=1" -i 2>/dev/null | grep -i '^link:' | sed -n 's/.*page=\([0-9]*\)>; rel="last".*/\1/p' || echo "0")
-  [ -z "$open_prs" ] && open_prs=0
+  local open_issues open_prs ci_failures
+  open_issues=$(timeout "$GH_TIMEOUT" gh issue list --repo "$repo" --state open --limit 1 --json number 2>/dev/null | jq 'length' 2>/dev/null || echo "0")
+  open_prs=$(timeout "$GH_TIMEOUT" gh pr list --repo "$repo" --state open --limit 1 --json number 2>/dev/null | jq 'length' 2>/dev/null || echo "0")
+  ci_failures=$(timeout "$GH_TIMEOUT" gh run list --repo "$repo" --status failure --limit 1 --json databaseId 2>/dev/null | jq 'length' 2>/dev/null || echo "0")
   
-  # CI failures (laatste 7 dagen)
-  local ci_failures
-  ci_failures=$(gh run list --repo "$repo" --limit 100 --json status,conclusion --jq '[.[] | select(.status == "completed" and .conclusion == "failure")] | length' 2>/dev/null || echo "0")
-  
-  # Stars
-  local stars
-  stars=$(gh api "repos/$repo" --jq '.stargazers_count' 2>/dev/null || echo "0")
-  
-  # Forks
-  local forks
-  forks=$(gh api "repos/$repo" --jq '.forks_count' 2>/dev/null || echo "0")
-  
-  # Laatste commit
-  local last_commit
-  last_commit=$(gh api "repos/$repo/commits?per_page=1" --jq '.[0].commit.committer.date' 2>/dev/null || echo "unknown")
-  
-  metrics=$(cat <<EOF
-{
-  "repo": "$repo",
-  "open_issues": $open_issues,
-  "open_prs": $open_prs,
-  "ci_failures_7d": $ci_failures,
-  "stars": $stars,
-  "forks": $forks,
-  "last_commit": "$last_commit",
-  "collected_at": "$(date -Iseconds)"
-}
-EOF
-)
-  echo "$metrics"
+  echo "{"repo":"$repo","open_issues":$open_issues,"open_prs":$open_prs,"ci_failures":$ci_failures}"
 }
 
-collect_api_metrics() {
-  local rate_limit
-  rate_limit=$(gh api rate_limit --jq '.resources.core' 2>/dev/null || echo '{"remaining":0,"limit":0,"reset":0}')
-  
-  local search_limit
-  search_limit=$(gh api rate_limit --jq '.resources.search' 2>/dev/null || echo '{"remaining":0,"limit":0,"reset":0}')
-  
-  cat <<EOF
-{
-  "api": {
-    "core": $rate_limit,
-    "search": $search_limit,
-    "collected_at": "$(date -Iseconds)"
-  }
-}
-EOF
-}
+# Fase 1: Repos ophalen
+log "Fase 1: Repos ophalen..."
 
-# Hoofdlogica
-log "Verzamelen van repo metrics..."
+rate_limit_check
 
-# Haal alle repos op
-repos=$(gh repo list --limit 1000 --json nameWithOwner --jq '.[].nameWithOwner' 2>/dev/null || echo "")
-
-if [ -z "$repos" ]; then
-  log "❌ Geen repos gevonden"
-  exit 1
+# Gebruik KEY_REPOS in plaats van alle 200+ repos
+if [ -z "${KEY_REPOS:-}" ]; then
+  log "  KEY_REPOS niet gedefinieerd, gebruik standaard set"
+  KEY_REPOS=(
+    "itsdarklikehell/hermes-desktop"
+    "itsdarklikehell/mission-control"
+    "itsdarklikehell/hermes-agent"
+    "itsdarklikehell/dnd-utils"
+    "itsdarklikehell/clawhub"
+    "itsdarklikehell/ci-templates"
+  )
 fi
 
-# Verzamel metrics per repo
-repo_metrics="["
-first=true
-for repo in $repos; do
-  if [ "$first" = true ]; then
-    first=false
-  else
-    repo_metrics+=","
-  fi
-  repo_metrics+=$(collect_repo_metrics "$repo")
-  log "  ✅ $repo"
+repo_count=${#KEY_REPOS[@]}
+log "  $repo_count repos gevonden (KEY_REPOS)"
+
+# Fase 2: Parallel metrics collectie
+log "Fase 2: Parallel metrics collectie (max=$MAX_PARALLEL)..."
+
+metrics_array="[]"
+
+for repo in "${KEY_REPOS[@]}"; do
+  log "  Repo: $repo"
+  
+  while [ "$(jobs -rp 2>/dev/null | wc -l)" -ge "$MAX_PARALLEL" ]; do
+    sleep 0.2
+  done
+  
+  collect_repo_metrics "$repo" &
 done
-repo_metrics+="]"
+wait
 
-# Verzamel API metrics
-api_metrics=$(collect_api_metrics)
+# Fase 3: Samenvatting
+log "Fase 3: Samenvatting..."
 
-# Combineer alles
+total_issues=0
+total_prs=0
+total_ci_failures=0
+
+# Lees metrics van temp bestanden
+for f in /tmp/fleet_metrics_*.json; do
+  [ -f "$f" ] || continue
+  issues=$(jq -r '.open_issues // 0' "$f" 2>/dev/null || echo "0")
+  prs=$(jq -r '.open_prs // 0' "$f" 2>/dev/null || echo "0")
+  ci=$(jq -r '.ci_failures // 0' "$f" 2>/dev/null || echo "0")
+  total_issues=$((total_issues + issues))
+  total_prs=$((total_prs + prs))
+  total_ci_failures=$((total_ci_failures + ci))
+  rm -f "$f"
+done
+
+log "  Totaal open issues: $total_issues"
+log "  Totaal open PRs: $total_prs"
+log "  Totaal CI failures: $total_ci_failures"
+
+# Sla metrics op
 cat > "$METRICS_FILE" <<EOF
 {
-  "timestamp": "fleet_health",
   "timestamp": "$(date -Iseconds)",
-  "repos": $repo_metrics,
-  "api": $(echo "$api_metrics" | jq '.api')
+  "total_repos": $repo_count,
+  "total_open_issues": $total_issues,
+  "total_open_prs": $total_prs,
+  "total_ci_failures": $total_ci_failures
 }
 EOF
 
-log "✅ Metrics opgeslagen in $METRICS_FILE"
+log "  Metrics opgeslagen: $METRICS_FILE"
+log "=== Metrics Collector complete ==="
 
-# Genereer samenvatting
-total_repos=$(echo "$repo_metrics" | jq 'length')
-total_issues=$(echo "$repo_metrics" | jq '[.[].open_issues] | add // 0')
-total_prs=$(echo "$repo_metrics" | jq '[.[].open_prs] | add // 0')
-total_ci_failures=$(echo "$repo_metrics" | jq '[.[].ci_failures_7d] | add // 0')
-total_stars=$(echo "$repo_metrics" | jq '[.[].stars] | add // 0')
+if [ "$TELEGRAM_REPORT_ENABLED" = "yes" ]; then
+  send_telegram_message "📊 *Metrics Collector* (geoptimaliseerd)
 
-log ""
-log "=== Fleet Health Samenvatting ==="
-log "  Repos: $total_repos"
-log "  Open issues: $total_issues"
-log "  Open PRs: $total_prs"
-log "  CI failures (7d): $total_ci_failures"
-log "  Totaal stars: $total_stars"
+*Repos:* $repo_count
+*Open issues:* $total_issues
+*Open PRs:* $total_prs
+*CI failures:* $total_ci_failures
 
-# Stuur naar Telegram
-if [ -n "${TELEGRAM_TOKEN:-}" ]; then
-  message="📊 Fleet Health Update
-
-Repos: $total_repos
-Open issues: $total_issues
-Open PRs: $total_prs
-CI failures (7d): $total_ci_failures
-Total stars: $total_stars
-
-Metrics: $METRICS_FILE"
-  
-  for chat_id in $TELEGRAM_CHAT_IDS; do
-    curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
-      -d "chat_id=$chat_id" \
-      -d "text=$message" > /dev/null 2>&1 || true
-  done
+📋 Volledig log: $LOG_FILE" || true
 fi

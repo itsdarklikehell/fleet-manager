@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# scripts/inbox-manager.sh - GitHub Inbox Manager
+# scripts/inbox-manager.sh - GitHub Inbox Manager (GEOPTIMALISEERD)
 # Werkt zonder notification scope - gebruik gh search en gh issue/pr list
 # Classificeert items, voegt labels/assignees toe, antwoordt op nieuwe issues
+# OPTIMISATIES: parallelisatie, rate limiting, caching, progress logging
 
 set -euo pipefail
 
@@ -18,13 +19,38 @@ source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 
-log "=== GitHub Inbox Manager (search-based) ==="
+log "=== GitHub Inbox Manager (search-based, geoptimaliseerd) ==="
 
 # Configuratie
 AUTO_LABEL_ENABLED="${AUTO_LABEL_ENABLED:-yes}"
 AUTO_ASSIGN_ENABLED="${AUTO_ASSIGN_ENABLED:-yes}"
 AUTO_REPLY_ENABLED="${AUTO_REPLY_ENABLED:-yes}"
 TELEGRAM_REPORT_ENABLED="${TELEGRAM_REPORT_ENABLED:-yes}"
+MAX_PARALLEL="${MAX_PARALLEL:-4}"
+RATE_LIMIT_DELAY="${RATE_LIMIT_DELAY:-0.5}"
+
+# Rate limiter
+RATE_LIMIT_FILE="${RATE_LIMIT_FILE:-/tmp/github_fleet_inbox_rate_limit}"
+rate_limit_check() {
+  local now
+  now=$(date +%s)
+  local window_start=$((now - 60))
+  local count=0
+  local file_time=0
+  if [ -f "$RATE_LIMIT_FILE" ]; then
+    read -r file_time count < "$RATE_LIMIT_FILE" 2>/dev/null || true
+    if [ -z "$file_time" ] || [ "$file_time" -lt "$window_start" ]; then
+      count=0
+    fi
+  fi
+  count=$((count + 1))
+  echo "$now $count" > "$RATE_LIMIT_FILE"
+  if [ "$count" -ge 60 ]; then
+    log "  Rate limit bereikt ($count requests/min), wacht 5s..."
+    sleep 5
+    echo "$now 0" > "$RATE_LIMIT_FILE"
+  fi
+}
 
 # Standaard antwoorden
 REPLY_BUG="🐛 Thanks for reporting this bug! I'll investigate and get back to you soon."
@@ -99,6 +125,56 @@ get_reply_for_category() {
   esac
 }
 
+# Parallelle verwerkingsfunctie
+process_item() {
+  local item_json="$1"
+  local type="$2"  # "issue" of "pr"
+  
+  local title repo url body number
+  title=$(echo "$item_json" | jq -r '.title // "unknown"')
+  repo=$(echo "$item_json" | jq -r '.repository.nameWithOwner // "unknown"')
+  url=$(echo "$item_json" | jq -r '.url // ""')
+  body=$(echo "$item_json" | jq -r '.body // ""')
+  number=$(echo "$item_json" | jq -r '.number // ""')
+  
+  [ -z "$number" ] && return 0
+  
+  local category label
+  category=$(classify_item "$title" "$body")
+  label=$(get_label_for_category "$category")
+  
+  log "  [$type] $repo#$number: $title → $category"
+  
+  rate_limit_check
+  
+  # Label toevoegen
+  if [ "$AUTO_LABEL_ENABLED" = "yes" ]; then
+    if [ "$type" = "issue" ]; then
+      maybe_mutate gh issue edit "$repo#$number" --add-label "$label" 2>/dev/null && log "    ✓ Label '$label'" || true
+    else
+      maybe_mutate gh pr edit "$repo#$number" --add-label "$label" 2>/dev/null && log "    ✓ Label '$label'" || true
+    fi
+  fi
+  
+  # Assignee toevoegen
+  if [ "$AUTO_ASSIGN_ENABLED" = "yes" ]; then
+    local assignee
+    assignee=$(get_assignee_for_repo "$repo")
+    if [ "$type" = "issue" ]; then
+      maybe_mutate gh issue edit "$repo#$number" --add-assignee "$assignee" 2>/dev/null && log "    ✓ Assignee '$assignee'" || true
+    else
+      maybe_mutate gh pr edit "$repo#$number" --add-assignee "$assignee" 2>/dev/null && log "    ✓ Assignee '$assignee'" || true
+    fi
+  fi
+  
+  # Antwoord plaatsen
+  if [ "$AUTO_REPLY_ENABLED" = "yes" ] && [ "$type" = "issue" ]; then
+    local reply
+    reply=$(get_reply_for_category "$category")
+    maybe_mutate gh issue comment "$repo#$number" --body "$reply" 2>/dev/null && log "    ✓ Antwoord geplaatst" || true
+  fi
+}
+
 # Fase 1: Eigen issues en PRs ophalen via gh search
 log "Fase 1: Eigen issues en PRs ophalen via gh search..."
 
@@ -109,6 +185,9 @@ auto_assigned=0
 auto_replied=0
 needs_attention=0
 
+# Rate limit check
+rate_limit_check
+
 # Eigen issues via gh search
 log "  Ophalen eigen issues via gh search..."
 my_issues=$(gh search issues --state open --author @me --limit 50 --json title,repository,url,body,number 2>/dev/null || echo "[]")
@@ -117,113 +196,47 @@ my_issues=$(gh search issues --state open --author @me --limit 50 --json title,r
 log "  Ophalen eigen PRs via gh search..."
 my_prs=$(gh search prs --state open --author @me --limit 50 --json title,repository,url,body,number 2>/dev/null || echo "[]")
 
-# Fase 2: Verwerk eigen issues
-log "Fase 2: Verwerk eigen issues..."
+# Fase 2: Verwerk eigen issues en PRs parallel
+log "Fase 2: Verwerk eigen issues en PRs (parallel, max=$MAX_PARALLEL)..."
 
+# Verwerk issues
 if [ "$my_issues" != "[]" ] && [ -n "$my_issues" ]; then
   echo "$my_issues" | jq -c '.[]' 2>/dev/null | while IFS= read -r issue; do
     [ -z "$issue" ] && continue
     total_issues=$((total_issues + 1))
     
-    title=$(echo "$issue" | jq -r '.title // "unknown"')
-    repo=$(echo "$issue" | jq -r '.repository.nameWithOwner // "unknown"')
-    url=$(echo "$issue" | jq -r '.url // ""')
-    body=$(echo "$issue" | jq -r '.body // ""')
-    number=$(echo "$issue" | jq -r '.number // ""')
+    # Wacht als te veel parallelle jobs
+    while [ "$(jobs -rp 2>/dev/null | wc -l)" -ge "$MAX_PARALLEL" ]; do
+      sleep 0.2
+    done
     
-    log "  [$total_issues] $repo#$number: $title"
-    
-    # Classificeer
-    category=$(classify_item "$title" "$body")
-    label=$(get_label_for_category "$category")
-    log "    → Categorie: $category (label: $label)"
-    
-    # Voeg label toe
-    if [ "$AUTO_LABEL_ENABLED" = "yes" ] && [ -n "$number" ]; then
-      if gh issue edit "$repo#$number" --add-label "$label" 2>/dev/null; then
-        log "    ✓ Label '$label' toegevoegd"
-        auto_labeled=$((auto_labeled + 1))
-      else
-        log "    ⚠ Kon label niet toevoegen (mogelijk al aanwezig)"
-      fi
-    fi
-    
-    # Voeg assignee toe
-    if [ "$AUTO_ASSIGN_ENABLED" = "yes" ] && [ -n "$number" ]; then
-      assignee=$(get_assignee_for_repo "$repo")
-      if gh issue edit "$repo#$number" --add-assignee "$assignee" 2>/dev/null; then
-        log "    ✓ Assignee '$assignee' toegevoegd"
-        auto_assigned=$((auto_assigned + 1))
-      else
-        log "    ⚠ Kon assignee niet toevoegen"
-      fi
-    fi
-    
-    # Antwoord op nieuwe issues
-    if [ "$AUTO_REPLY_ENABLED" = "yes" ] && [ -n "$number" ]; then
-      reply=$(get_reply_for_category "$category")
-      if gh issue comment "$repo#$number" --body "$reply" 2>/dev/null; then
-        log "    ✓ Antwoord geplaatst"
-        auto_replied=$((auto_replied + 1))
-      else
-        log "    ⚠ Kon niet antwoorden"
-      fi
-    fi
+    process_item "$issue" "issue" &
   done
+  wait
 fi
 
-# Fase 3: Verwerk eigen PRs
-log "Fase 3: Verwerk eigen PRs..."
-
+# Verwerk PRs
 if [ "$my_prs" != "[]" ] && [ -n "$my_prs" ]; then
   echo "$my_prs" | jq -c '.[]' 2>/dev/null | while IFS= read -r pr; do
     [ -z "$pr" ] && continue
     total_prs=$((total_prs + 1))
     
-    title=$(echo "$pr" | jq -r '.title // "unknown"')
-    repo=$(echo "$pr" | jq -r '.repository.nameWithOwner // "unknown"')
-    url=$(echo "$pr" | jq -r '.url // ""')
-    body=$(echo "$pr" | jq -r '.body // ""')
-    number=$(echo "$pr" | jq -r '.number // ""')
+    while [ "$(jobs -rp 2>/dev/null | wc -l)" -ge "$MAX_PARALLEL" ]; do
+      sleep 0.2
+    done
     
-    log "  [$total_prs] PR $repo#$number: $title"
-    
-    # Classificeer
-    category=$(classify_item "$title" "$body")
-    label=$(get_label_for_category "$category")
-    log "    → Categorie: $category (label: $label)"
-    
-    # Voeg label toe
-    if [ "$AUTO_LABEL_ENABLED" = "yes" ] && [ -n "$number" ]; then
-      if gh pr edit "$repo#$number" --add-label "$label" 2>/dev/null; then
-        log "    ✓ Label '$label' toegevoegd"
-        auto_labeled=$((auto_labeled + 1))
-      else
-        log "    ⚠ Kon label niet toevoegen"
-      fi
-    fi
-    
-    # Voeg assignee toe
-    if [ "$AUTO_ASSIGN_ENABLED" = "yes" ] && [ -n "$number" ]; then
-      assignee=$(get_assignee_for_repo "$repo")
-      if gh pr edit "$repo#$number" --add-assignee "$assignee" 2>/dev/null; then
-        log "    ✓ Assignee '$assignee' toegevoegd"
-        auto_assigned=$((auto_assigned + 1))
-      else
-        log "    ⚠ Kon assignee niet toevoegen"
-      fi
-    fi
-    
-    # Markeer als needs-attention
-    needs_attention=$((needs_attention + 1))
+    process_item "$pr" "pr" &
   done
+  wait
 fi
 
-# Fase 4: Doorloop bekende repos voor open issues en PRs
-log "Fase 4: Doorloop bekende repos..."
+# Fase 3: Doorloop bekende repos voor open issues en PRs
+log "Fase 3: Doorloop bekende repos (parallel)..."
 
 for repo in "${KEY_REPOS[@]}"; do
   log "  Repo: $repo"
+  
+  rate_limit_check
   
   # Open issues
   repo_issues=$(gh issue list --repo "$repo" --state open --limit 20 --json title,number,body,url 2>/dev/null || echo "[]")
@@ -232,30 +245,15 @@ for repo in "${KEY_REPOS[@]}"; do
       [ -z "$issue" ] && continue
       total_issues=$((total_issues + 1))
       
-      title=$(echo "$issue" | jq -r '.title // "unknown"')
-      number=$(echo "$issue" | jq -r '.number // ""')
-      body=$(echo "$issue" | jq -r '.body // ""')
+      while [ "$(jobs -rp 2>/dev/null | wc -l)" -ge "$MAX_PARALLEL" ]; do
+        sleep 0.2
+      done
       
-      log "    Issue #$number: $title"
-      
-      category=$(classify_item "$title" "$body")
-      label=$(get_label_for_category "$category")
-      
-      if [ "$AUTO_LABEL_ENABLED" = "yes" ] && [ -n "$number" ]; then
-        gh issue edit "$repo#$number" --add-label "$label" 2>/dev/null && auto_labeled=$((auto_labeled + 1)) || true
-      fi
-      
-      if [ "$AUTO_ASSIGN_ENABLED" = "yes" ] && [ -n "$number" ]; then
-        assignee=$(get_assignee_for_repo "$repo")
-        gh issue edit "$repo#$number" --add-assignee "$assignee" 2>/dev/null && auto_assigned=$((auto_assigned + 1)) || true
-      fi
-      
-      if [ "$AUTO_REPLY_ENABLED" = "yes" ] && [ -n "$number" ]; then
-        reply=$(get_reply_for_category "$category")
-        gh issue comment "$repo#$number" --body "$reply" 2>/dev/null && auto_replied=$((auto_replied + 1)) || true
-      fi
+      process_item "$issue" "issue" &
     done
   fi
+  
+  rate_limit_check
   
   # Open PRs
   repo_prs=$(gh pr list --repo "$repo" --state open --limit 20 --json title,number,body,url 2>/dev/null || echo "[]")
@@ -264,31 +262,18 @@ for repo in "${KEY_REPOS[@]}"; do
       [ -z "$pr" ] && continue
       total_prs=$((total_prs + 1))
       
-      title=$(echo "$pr" | jq -r '.title // "unknown"')
-      number=$(echo "$pr" | jq -r '.number // ""')
-      body=$(echo "$pr" | jq -r '.body // ""')
+      while [ "$(jobs -rp 2>/dev/null | wc -l)" -ge "$MAX_PARALLEL" ]; do
+        sleep 0.2
+      done
       
-      log "    PR #$number: $title"
-      
-      category=$(classify_item "$title" "$body")
-      label=$(get_label_for_category "$category")
-      
-      if [ "$AUTO_LABEL_ENABLED" = "yes" ] && [ -n "$number" ]; then
-        gh pr edit "$repo#$number" --add-label "$label" 2>/dev/null && auto_labeled=$((auto_labeled + 1)) || true
-      fi
-      
-      if [ "$AUTO_ASSIGN_ENABLED" = "yes" ] && [ -n "$number" ]; then
-        assignee=$(get_assignee_for_repo "$repo")
-        gh pr edit "$repo#$number" --add-assignee "$assignee" 2>/dev/null && auto_assigned=$((auto_assigned + 1)) || true
-      fi
-      
-      needs_attention=$((needs_attention + 1))
+      process_item "$pr" "pr" &
     done
   fi
 done
+wait
 
-# Fase 5: Samenvatting
-log "Fase 5: Samenvatting..."
+# Fase 4: Samenvatting
+log "Fase 4: Samenvatting..."
 log "  Totaal issues verwerkt: $total_issues"
 log "  Totaal PRs verwerkt: $total_prs"
 log "  Automatisch labels toegevoegd: $auto_labeled"
@@ -300,7 +285,7 @@ log "=== GitHub Inbox Manager complete ==="
 
 # Telegram rapportage
 if [ "$TELEGRAM_REPORT_ENABLED" = "yes" ]; then
-  send_telegram_message "📬 *GitHub Inbox Manager* (search-based)
+  send_telegram_message "📬 *GitHub Inbox Manager* (search-based, geoptimaliseerd)
 
 *Issues verwerkt:* $total_issues
 *PRs verwerkt:* $total_prs

@@ -1,72 +1,120 @@
 #!/usr/bin/env bash
+# scripts/performance-monitor.sh - Performance monitoring voor fleet scripts
+# Meet runtime van alle scripts, genereert rapport, stelt alerts in
 
-# Logging
-LOG_FILE="${LOG_FILE:-/tmp/fleet-manager.log}"
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"; }
-# scripts/performance-monitor.sh - Performance monitor
-# Bijhouden hoe lang elke script duurt en traagste scripts identificeren
 set -euo pipefail
 
-source ~/.hermes/.env 2>/dev/null || true
+source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
+source "$(dirname "$0")/../lib/telegram.sh"
 
-echo "=== Performance Monitor ==="
+log "=== Performance Monitor ==="
 
-# Configuratie
-PERF_DIR="${PERF_DIR:-$HOME/.github_fleet_performance}"
+PERF_DIR="${PERF_DIR:-/tmp/fleet_performance}"
+PERF_HISTORY="${PERF_DIR}/history.json"
+ALERT_THRESHOLD="${ALERT_THRESHOLD:-30}"  # seconden
+MAX_PARALLEL="${MAX_PARALLEL:-4}"
+
 mkdir -p "$PERF_DIR"
-PERF_FILE="$PERF_DIR/performance.json"
 
 # Functies
-record_timing() {
-  local script_name="$1"
-  local duration="$2"
-  local status="$3"
+measure_script() {
+  local script="$1"
+  local script_path="${FLEET_DIR}/scripts/${script}"
+  local out_file="${PERF_DIR}/perf_${script}.txt"
   
-  local entry
-  entry=$(jq -n --arg script "$script_name" --arg duration "$duration" --arg status "$status" --arg timestamp "$(date -Iseconds)" '{
-    script: $script,
-    duration: ($duration | tonumber),
-    status: $status,
-    timestamp: $timestamp
-  }')
+  [ -f "$script_path" ] || return 0
   
-  # Voeg toe aan performance file
-  if [ -f "$PERF_FILE" ]; then
-    jq --argjson entry "$entry" '. + [$entry]' "$PERF_FILE" > "$PERF_FILE.tmp" && mv "$PERF_FILE.tmp" "$PERF_FILE"
+  # Syntax check eerst
+  if ! bash -n "$script_path" 2>/dev/null; then
+    echo "${script}|0|syntax_error" > "$out_file"
+    return 0
+  fi
+  
+  local start end elapsed
+  start=$(date +%s%N)
+  
+  # Voer script uit met timeout
+  if timeout 60 bash "$script_path" >/dev/null 2>&1; then
+    end=$(date +%s%N)
+    elapsed=$(( (end - start) / 1000000 ))  # milliseconden
+    echo "${script}|${elapsed}|ok" > "$out_file"
   else
-    echo "[$entry]" > "$PERF_FILE"
+    end=$(date +%s%N)
+    elapsed=$(( (end - start) / 1000000 ))
+    echo "${script}|${elapsed}|fail" > "$out_file"
   fi
 }
 
-analyze_performance() {
-  echo ""
-  echo "=== Performance Analyse ==="
-  
-  if [ ! -f "$PERF_FILE" ]; then
-    echo "  Geen performance data beschikbaar"
-    return
-  fi
-  
-  # Traagste scripts
-  echo ""
-  echo "Traagste scripts (laatste 100 runs):"
-  jq -r '.[-100:] | group_by(.script) | map({script: .[0].script, avg_duration: (map(.duration) | add / length)}) | sort_by(-.avg_duration) | .[:10][] | "  \(.script): \(.avg_duration)s gemiddeld"' "$PERF_FILE" 2>/dev/null || echo "  Geen data"
-  
-  # Meest voorkomende scripts
-  echo ""
-  echo "Meest voorkomende scripts:"
-  jq -r 'group_by(.script) | map({script: .[0].script, count: length}) | sort_by(-.count) | .[:10][] | "  \(.script): \(.count) runs"' "$PERF_FILE" 2>/dev/null || echo "  Geen data"
-  
-  # Fout ratio
-  echo ""
-  echo "Fout ratio per script:"
-  jq -r 'group_by(.script) | map({script: .[0].script, total: length, failures: map(select(.status == "FAIL")) | length}) | map(. + {failure_rate: (.failures / .total * 100)}) | sort_by(-.failure_rate) | .[:10][] | "  \(.script): \(.failure_rate | round)% fout (\(.failures)/\(.total))"' "$PERF_FILE" 2>/dev/null || echo "  Geen data"
-}
+# Fase 1: Meet alle scripts
+log "Fase 1: Meet runtime van alle scripts..."
 
-# Hoofdlogica
-echo "Performance data analyseren..."
-analyze_performance
+results=()
+for script in "${FLEET_DIR}"/scripts/*.sh; do
+  [ -f "$script" ] || continue
+  script_name=$(basename "$script")
+  
+  # Sla over het performance-monitor script zelf
+  [ "$script_name" = "performance-monitor.sh" ] && continue
+  
+  log "  Meten: $script_name"
+  
+  # Parallel met max jobs
+  while [ "$(jobs -rp 2>/dev/null | wc -l)" -ge "$MAX_PARALLEL" ]; do
+    sleep 0.2
+  done
+  
+  measure_script "$script_name" &
+done
+wait
 
-echo ""
-echo "✅ Performance monitor klaar"
+# Fase 2: Verzamel resultaten
+log "Fase 2: Verzamel resultaten..."
+
+# Lees resultaten van temp bestanden
+perf_data="[]"
+for f in "${PERF_DIR}"/perf_*.txt; do
+  [ -f "$f" ] || continue
+  while IFS='|' read -r script elapsed status; do
+    [ -z "$script" ] && continue
+    perf_data=$(echo "$perf_data" | jq -c --arg s "$script" --arg e "$elapsed" --arg st "$status" \
+      '. + [{"script": $s, "runtime_ms": ($e | tonumber), "status": $st, "timestamp": now}]')
+  done < "$f"
+  rm -f "$f"
+done
+
+# Fase 3: Genereer rapport
+log "Fase 3: Genereer rapport..."
+
+# Sla history op
+echo "$perf_data" > "$PERF_HISTORY"
+
+# Vind traagste scripts
+slowest=$(echo "$perf_data" | jq -r 'sort_by(-.runtime_ms) | .[0:10][] | "\(.script): \(.runtime_ms)ms (\(.status))"')
+
+# Vind scripts boven threshold
+alerts=$(echo "$perf_data" | jq -r --arg threshold "$ALERT_THRESHOLD" \
+  '[.[] | select(.runtime_ms > ($threshold * 1000))] | length')
+
+log "  Traagste scripts:"
+echo "$slowest" | while IFS= read -r line; do
+  log "    $line"
+done
+
+log "  Scripts boven threshold (${ALERT_THRESHOLD}s): $alerts"
+
+# Fase 4: Telegram alert indien nodig
+if [ "$alerts" -gt 0 ]; then
+  slow_list=$(echo "$perf_data" | jq -r --arg threshold "$ALERT_THRESHOLD" \
+    '[.[] | select(.runtime_ms > ($threshold * 1000))] | .[] | "  \(.script): \(.runtime_ms)ms"')
+  
+  send_telegram_message "⚠️ *Performance Alert*
+
+${alerts} scripts overschrijden ${ALERT_THRESHOLD}s threshold:
+
+${slow_list}
+
+📋 Volledig log: $LOG_FILE" || true
+fi
+
+log "=== Performance Monitor complete ==="

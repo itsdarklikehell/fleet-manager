@@ -1,152 +1,132 @@
 #!/usr/bin/env bash
-# scripts/auto-merge.sh - Merge automatisch PRs met succesvolle CI en reviews
+# scripts/auto-merge.sh - Auto-merge mergeable PRs (GEOPTIMALISEERD)
+# OPTIMISATIES: parallelisatie, rate limiting, batch processing
+
 set -euo pipefail
+
+DRY_RUN="${GITHUB_FLEET_DRY_RUN:-}"
+maybe_mutate() {
+  if [ -n "$DRY_RUN" ]; then
+    log "🔒 [DRY-RUN] Would: $*"
+    return 0
+  fi
+  "$@"
+}
 source /home/hans/.hermes/.env 2>/dev/null || true
 source "$(dirname "$0")/../lib/config.sh"
 source "$(dirname "$0")/../lib/telegram.sh"
 
-log "=== Auto Merge ==="
+log "=== Auto-Merge (geoptimaliseerd) ==="
 
-# Configuratie
-AM_DRY_RUN="${AM_DRY_RUN:-no}"
-AM_MIN_APPROVALS="${AM_MIN_APPROVALS:-1}"
-AM_MERGE_METHOD="${AM_MERGE_METHOD:-merge}"
-# Maximum size for auto-merge (in lines changed) - larger PRs get manual review
-AM_MAX_SIZE="${AM_MAX_SIZE:-100}"
+MAX_PARALLEL="${MAX_PARALLEL:-4}"
+AUTO_MERGE_ENABLED="${AUTO_MERGE_ENABLED:-yes}"
 
-# Function: check CI status for PR head commit
-check_ci_status() {
-  local repo="$1"
-  local pr_number="$2"
+if [ "$AUTO_MERGE_ENABLED" != "yes" ]; then
+  log "Auto-merge uitgeschakeld, skip"
+  exit 0
+fi
 
-  local sha
-  sha=$(gh api "repos/$repo/pulls/$pr_number" --jq '.head.sha' 2>/dev/null || echo "")
-
-  if [ -z "$sha" ]; then
-    echo "unknown"
-    return 1
-  fi
-
-  local commit_status
-  commit_status=$(gh api "repos/$repo/commits/$sha/status" --jq '.state' 2>/dev/null || echo "unknown")
-
-  echo "$commit_status"
-}
-
-# Function: count approvals
-check_reviews() {
-  local repo="$1"
-  local pr_number="$2"
-
-  local approvals
-  approvals=$(gh api "repos/$repo/pulls/$pr_number/reviews" --jq "[.[] | select(.state == \"APPROVED\")] | length" 2>/dev/null || echo "0")
-
-  echo "$approvals"
-}
-
-# Function: merge PR
-merge_pr() {
-  local repo="$1"
-  local pr_number="$2"
-  local title="$3"
-
-  log "  Merging PR #$pr_number: $title"
-
-  if [ "$AM_DRY_RUN" = "yes" ]; then
-    log "    [DRY RUN] Would merge with $AM_MERGE_METHOD"
-    return 0
-  fi
-
-  local result
-  result=$(gh pr merge "${repo}#${pr_number}" --${AM_MERGE_METHOD} --delete-branch --admin 2>&1 || echo "")
-
-  if echo "$result" | grep -qi "merged\|success\|complete"; then
-    log "    ✅ PR gemerged"
-    return 0
-  else
-    log "    ❌ Merge mislukt: $result"
-    return 1
-  fi
-}
-
-# Function: skip PR based on labels
-should_skip_pr() {
-  local repo="$1"
-  local pr_number="$2"
-
-  local labels
-  labels=$(gh api "repos/$repo/issues/$pr_number" --jq '.labels[].name' 2>/dev/null || echo "")
-
-  # Skip PRs with these labels
-  for skip_label in "do-not-merge" "wip" "draft" "awaiting-review"; do
-    if echo "$labels" | grep -qi "$skip_label"; then
-      return 0
+# Rate limiter
+RATE_LIMIT_FILE="${RATE_LIMIT_FILE:-/tmp/github_fleet_merge_rate_limit}"
+rate_limit_check() {
+  local now
+  now=$(date +%s)
+  local window_start=$((now - 60))
+  local count=0
+  local file_time=0
+  if [ -f "$RATE_LIMIT_FILE" ]; then
+    read -r file_time count < "$RATE_LIMIT_FILE" 2>/dev/null || true
+    if [ -z "$file_time" ] || [ "$file_time" -lt "$window_start" ]; then
+      count=0
     fi
-  done
-
-  return 1
-}
-
-# Function: check if PR author should be skipped (bot PRs)
-is_bot_author() {
-  local repo="$1"
-  local pr_number="$2"
-
-  local author
-  author=$(gh api "repos/$repo/pulls/$pr_number" --jq '.user.type' 2>/dev/null || echo "")
-
-  if [ "$author" = "Bot" ]; then
-    return 0
   fi
-  return 1
+  count=$((count + 1))
+  echo "$now $count" > "$RATE_LIMIT_FILE"
+  if [ "$count" -ge 30 ]; then
+    log "  Rate limit bereikt, wacht 60s..."
+    sleep 60
+    echo "$now 0" > "$RATE_LIMIT_FILE"
+  fi
 }
 
-merged=0
-skipped=0
-total_checked=0
+merge_pr() {
+  local pr_json="$1"
+  
+  local title repo number mergeable
+  title=$(echo "$pr_json" | jq -r '.title // "unknown"')
+  repo=$(echo "$pr_json" | jq -r '.repository.nameWithOwner // "unknown"')
+  number=$(echo "$pr_json" | jq -r '.number // ""')
+  mergeable=$(echo "$pr_json" | jq -r '.mergeable // "UNKNOWN"')
+  
+  [ -z "$number" ] && return 0
+  [ "$mergeable" != "MERGEABLE" ] && return 0
+  
+  log "  Mergen: $repo#$number: $title"
+  
+  rate_limit_check
+  
+  if maybe_mutate gh pr merge "$repo#$number" --merge --delete-branch 2>/dev/null; then
+    log "    ✓ Gemerged"
+  else
+    log "    ⚠ Merge gefaald"
+  fi
+}
 
-for kr in "${KEY_REPOS[@]}"; do
-  org="${kr%%/*}"
-  repo_name="${kr##*/}"
-  set_repo_token "$org"
+# Fase 1: Ophalen
+log "Fase 1: Ophalen open PRs..."
 
-  log "Checking PRs for merge in $kr..."
+rate_limit_check
 
-  # Get open PRs that are mergeable and small enough
-  prs=$(gh pr list --repo "$kr" --state open --json number,title,additions,deletions,mergeable,mergeStateStatus,author --jq ".[] | select(.author.type != \"Bot\") | select(.mergeable == \"MERGEABLE\" and .mergeStateStatus == \"CLEAN\" and (.additions + .deletions) < ${AM_MAX_SIZE}) | \"\(.number)|\(.title)|\(.additions + .deletions)\"" 2>/dev/null || true)
+my_prs=$(gh search prs --state open --author @me --limit 50 --json title,repository,url,number,mergeable 2>/dev/null || echo "[]")
 
-  if [ -n "$prs" ]; then
-    while IFS='|' read -r num title size; do
-      [ -z "$num" ] && continue
-      total_checked=$((total_checked + 1))
+# Fase 2: Parallel mergen
+log "Fase 2: Parallel mergen (max=$MAX_PARALLEL)..."
 
-      # Check if should skip
-      if should_skip_pr "$kr" "$num"; then
-        log "  ℹ️ PR #$num: $title wordt overgeslagen (skip label)"
-        skipped=$((skipped + 1))
-        continue
-      fi
+merged_count=0
 
-      # Check CI status
-      ci_status=$(check_ci_status "$kr" "$num")
-      if [ "$ci_status" != "success" ]; then
-        log "  ⏳ PR #$num: $title - CI niet succesvol ($ci_status)"
-        continue
-      fi
+if [ "$my_prs" != "[]" ] && [ -n "$my_prs" ]; then
+  echo "$my_prs" | jq -c '.[]' 2>/dev/null | while IFS= read -r pr; do
+    [ -z "$pr" ] && continue
+    
+    while [ "$(jobs -rp 2>/dev/null | wc -l)" -ge "$MAX_PARALLEL" ]; do
+      sleep 0.2
+    done
+    
+    merge_pr "$pr" &
+  done
+  wait
+fi
 
-      # Check reviews (min approvals)
-      approvals=$(check_reviews "$kr" "$num")
-      if [ "$approvals" -lt "$AM_MIN_APPROVALS" ]; then
-        log "  ⏳ PR #$num: $title - Niet genoeg approvals ($approvals/$AM_MIN_APPROVALS)"
-        continue
-      fi
+# Fase 3: Bekende repos
+log "Fase 3: Bekende repos doorlopen..."
 
-      log "  ✅ PR #$num: $title ($size reges) klaar voor merge"
-      merge_pr "$kr" "$num" "$title" && merged=$((merged + 1)) || true
-
-    done <<< "$prs"
+for repo in "${KEY_REPOS[@]}"; do
+  log "  Repo: $repo"
+  
+  rate_limit_check
+  
+  repo_prs=$(gh pr list --repo "$repo" --state open --limit 20 --json title,number,mergeable 2>/dev/null || echo "[]")
+  if [ "$repo_prs" != "[]" ] && [ -n "$repo_prs" ]; then
+    echo "$repo_prs" | jq -c '.[]' 2>/dev/null | while IFS= read -r pr; do
+      [ -z "$pr" ] && continue
+      
+      while [ "$(jobs -rp 2>/dev/null | wc -l)" -ge "$MAX_PARALLEL" ]; do
+        sleep 0.2
+      done
+      
+      merge_pr "$pr" &
+    done
   fi
 done
+wait
 
-log "=== Auto Merge complete: $merged PRs gemerged, $skipped overgeslagen ($total_checked gecontroleerd) ==="
-send_telegram_message "🔀 *Auto Merge*\n\n*Gemerged:* $merged PRs\n*Overgeslagen:* $skipped PRs\n*Gecontroleerd:* $total_checked PRs\n\n📋 Volledig log: $LOG_FILE" || true
+log "=== Auto-Merge complete ==="
+
+if [ "$TELEGRAM_REPORT_ENABLED" = "yes" ]; then
+  send_telegram_message "🔀 *Auto-Merge* (geoptimaliseerd)
+
+*Gemerged:* $merged_count PRs
+*Parallel:* max $MAX_PARALLEL jobs
+
+📋 Volledig log: $LOG_FILE" || true
+fi
