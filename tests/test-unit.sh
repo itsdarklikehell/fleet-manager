@@ -36,6 +36,9 @@ test_scripts_exist() {
     "metrics-collector.sh"
     "dependency-audit.sh"
     "backup-verify.sh"
+    "auto-repo-creator.sh"
+    "cross-repo-dependency-tracker.sh"
+    "auto-release-notes.sh"
   )
   
   for script in "${scripts[@]}"; do
@@ -49,6 +52,9 @@ test_scripts_executable() {
     "health-check.sh"
     "test-suite.sh"
     "fleet-dashboard.sh"
+    "auto-repo-creator.sh"
+    "cross-repo-dependency-tracker.sh"
+    "auto-release-notes.sh"
   )
   
   for script in "${scripts[@]}"; do
@@ -63,6 +69,9 @@ test_scripts_syntax() {
     "test-suite.sh"
     "fleet-dashboard.sh"
     "metrics-collector.sh"
+    "auto-repo-creator.sh"
+    "cross-repo-dependency-tracker.sh"
+    "auto-release-notes.sh"
   )
   
   for script in "${scripts[@]}"; do
@@ -94,6 +103,19 @@ test_documentation() {
   run_test "LICENSE exists" "[ -f LICENSE ]"
 }
 
+# Test: nieuwe scripts hebben shebang
+test_new_scripts_shebang() {
+  local scripts=(
+    "auto-repo-creator.sh"
+    "cross-repo-dependency-tracker.sh"
+    "auto-release-notes.sh"
+  )
+  
+  for script in "${scripts[@]}"; do
+    run_test "$script has shebang" "head -1 scripts/$script | grep -q '^#!'"
+  done
+}
+
 # Voer tests uit
 test_scripts_exist
 test_scripts_executable
@@ -101,6 +123,7 @@ test_scripts_syntax
 test_lib_files
 test_ci_workflow
 test_documentation
+test_new_scripts_shebang
 
 # Samenvatting
 echo ""

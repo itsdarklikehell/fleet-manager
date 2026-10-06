@@ -34,6 +34,8 @@ Automatische GitHub fleet management met 156 modulaire scripts, cron jobs, monit
 - **A2A Bridge**: A2A agent queries voor repo-specifieke expertise
 - **AI-Powered Triage**: AI-gestuurde issue triage en PR reviews
 - **Cross-Repo Dependency Tracking**: Detecteert dependencies tussen repos
+- **Auto Repo Creator**: Automatisch nieuwe repos aanmaken met standaard structuur
+- **Auto Release Notes**: Genereer release notes van commits (conventional commits)
 - **Fleet Dashboard**: Real-time HTML dashboard met script/cron status
 - **Performance Monitoring**: Script execution time tracking
 - **Profile Data Generator**: Live JSON data voor GitHub Pages

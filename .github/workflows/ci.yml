@@ -77,3 +77,23 @@ jobs:
       - name: Check dependencies
         run: |
           bash scripts/dependency-audit.sh || true
+
+  script-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Count scripts
+        run: |
+          echo "Total scripts: $(find scripts -name '*.sh' | wc -l)"
+          echo "Total lib files: $(find lib -name '*.sh' | wc -l)"
+          echo "Total tests: $(find tests -name '*.sh' | wc -l)"
+      - name: Check script permissions
+        run: |
+          for script in scripts/*.sh; do
+            [ -f "$script" ] && [ -x "$script" ] || echo "NOT EXECUTABLE: $script"
+          done
+      - name: Verify all scripts have shebang
+        run: |
+          for script in scripts/*.sh lib/*.sh; do
+            [ -f "$script" ] && head -1 "$script" | grep -q "^#!" || echo "NO SHEBANG: $script"
+          done
