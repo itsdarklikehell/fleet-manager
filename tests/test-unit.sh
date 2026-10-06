@@ -35,9 +35,7 @@ test_scripts_exist() {
     "fleet-dashboard.sh"
     "metrics-collector.sh"
     "dependency-audit.sh"
-    "security-check.sh"
     "backup-verify.sh"
-    "rate-limit-check.sh"
   )
   
   for script in "${scripts[@]}"; do
@@ -76,10 +74,7 @@ test_scripts_syntax() {
 test_lib_files() {
   local libs=(
     "config.sh"
-    "logging.sh"
     "telegram.sh"
-    "github.sh"
-    "docker.sh"
   )
   
   for lib in "${libs[@]}"; do

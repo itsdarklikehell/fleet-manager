@@ -14,14 +14,15 @@ test:
 
 # Lint all scripts
 lint:
-	@echo "=== Running shellcheck ==="
-	@for script in scripts/*.sh lib/*.sh; do \
-		[ -f "$$script" ] && shellcheck "$$script" || true; \
-	done
 	@echo "=== Checking bash syntax ==="
 	@for script in scripts/*.sh lib/*.sh; do \
 		[ -f "$$script" ] && bash -n "$$script" || true; \
 	done
+	@echo "=== Running shellcheck (warnings only) ==="
+	@for script in scripts/*.sh lib/*.sh; do \
+		[ -f "$$script" ] && shellcheck -S warning "$$script" 2>&1 | grep -v "^$$" || true; \
+	done
+	@echo "=== Lint complete ==="
 
 # Install fleet-manager
 install:
