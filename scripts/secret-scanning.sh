@@ -59,7 +59,8 @@ scan_for_secrets() {
       clone_ok=true
       break
     fi
-    log "  ⚠️ Clone poging $attempt gefaald, opnieuw proberen..."  done
+    log "  ⚠️ Clone poging $attempt gefaald, opnieuw proberen..."
+  done
   
   if [ "$clone_ok" != true ]; then
     log "  ❌ Kon repo niet clonen na 3 pogingen"
