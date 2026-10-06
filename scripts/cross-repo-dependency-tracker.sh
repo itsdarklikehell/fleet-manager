@@ -9,13 +9,15 @@ log "=== Cross-Repo Dependency Tracker ==="
 # Functies
 scan_dependencies() {
   local repo_dir="$1"
-  local repo_name=$(basename "$repo_dir")
+  local repo_name
+  repo_name=$(basename "$repo_dir")
   
   log "Scanning $repo_name for dependencies..."
   
   # Check for package.json (Node.js)
   if [ -f "$repo_dir/package.json" ]; then
-    local deps=$(jq -r '.dependencies // {} | keys[]' "$repo_dir/package.json" 2>/dev/null || true)
+    local deps
+  deps=$(jq -r '.dependencies // {} | keys[]' "$repo_dir/package.json" 2>/dev/null || true)
     if [ -n "$deps" ]; then
       log "  Node.js dependencies:"
       echo "$deps" | while read -r dep; do
@@ -26,7 +28,8 @@ scan_dependencies() {
   
   # Check for requirements.txt (Python)
   if [ -f "$repo_dir/requirements.txt" ]; then
-    local deps=$(grep -E '^[a-zA-Z]' "$repo_dir/requirements.txt" 2>/dev/null || true)
+    local deps
+  deps=$(grep -E '^[a-zA-Z]' "$repo_dir/requirements.txt" 2>/dev/null || true)
     if [ -n "$deps" ]; then
       log "  Python dependencies:"
       echo "$deps" | while read -r dep; do
@@ -37,7 +40,8 @@ scan_dependencies() {
   
   # Check for Cargo.toml (Rust)
   if [ -f "$repo_dir/Cargo.toml" ]; then
-    local deps=$(grep -E '^[a-zA-Z].*=' "$repo_dir/Cargo.toml" 2>/dev/null || true)
+    local deps
+  deps=$(grep -E '^[a-zA-Z].*=' "$repo_dir/Cargo.toml" 2>/dev/null || true)
     if [ -n "$deps" ]; then
       log "  Rust dependencies:"
       echo "$deps" | while read -r dep; do
@@ -48,7 +52,8 @@ scan_dependencies() {
   
   # Check for go.mod (Go)
   if [ -f "$repo_dir/go.mod" ]; then
-    local deps=$(grep -E '^\s+[a-zA-Z]' "$repo_dir/go.mod" 2>/dev/null || true)
+    local deps
+  deps=$(grep -E '^\s+[a-zA-Z]' "$repo_dir/go.mod" 2>/dev/null || true)
     if [ -n "$deps" ]; then
       log "  Go dependencies:"
       echo "$deps" | while read -r dep; do
@@ -69,7 +74,8 @@ generate_dependency_graph() {
   
   for repo_dir in "$REPOS_DIR"/*/; do
     [ -d "$repo_dir/.git" ] || continue
-    local repo_name=$(basename "$repo_dir")
+    local repo_name
+  repo_name=$(basename "$repo_dir")
     
     echo "## $repo_name" >> "$output_file"
     echo "" >> "$output_file"

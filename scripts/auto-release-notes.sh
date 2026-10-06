@@ -29,7 +29,8 @@ generate_release_notes() {
   cd "$repo_dir"
   
   # Get commits since last tag
-  local last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+  local last_tag
+  last_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
   local commits
   
   if [ -n "$last_tag" ]; then
@@ -44,11 +45,16 @@ generate_release_notes() {
   fi
   
   # Categorize commits
-  local features=$(echo "$commits" | grep -iE "^feat[(:]" || true)
-  local fixes=$(echo "$commits" | grep -iE "^fix[(:]" || true)
-  local docs=$(echo "$commits" | grep -iE "^docs[(:]" || true)
-  local chores=$(echo "$commits" | grep -iE "^chore[(:]" || true)
-  local others=$(echo "$commits" | grep -ivE "^(feat|fix|docs|chore)[(:]" || true)
+  local features
+  features=$(echo "$commits" | grep -iE "^feat[(:]" || true)
+  local fixes
+  fixes=$(echo "$commits" | grep -iE "^fix[(:]" || true)
+  local docs
+  docs=$(echo "$commits" | grep -iE "^docs[(:]" || true)
+  local chores
+  chores=$(echo "$commits" | grep -iE "^chore[(:]" || true)
+  local others
+  others=$(echo "$commits" | grep -ivE "^(feat|fix|docs|chore)[(:]" || true)
   
   # Generate release notes
   local release_notes="# Release Notes: $tag_name"
