@@ -46,6 +46,9 @@ jobs:
       - name: Run test suite
         run: |
           bash scripts/test-suite.sh
+      - name: Run unit tests
+        run: |
+          bash tests/test-unit.sh
       - name: Run health check
         run: |
           bash scripts/health-check.sh || true
